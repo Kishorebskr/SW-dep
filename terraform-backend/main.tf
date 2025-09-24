@@ -2,23 +2,17 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Generate random suffix for global uniqueness
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
+# S3 bucket for Terraform state
 resource "aws_s3_bucket" "tf_state" {
-  bucket = var.s3_bucket_name
+  bucket = "${var.s3_bucket_name}-${random_id.suffix.hex}"
 
   versioning {
     enabled = true
-  }
-
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
-    }
-  }
-
-  lifecycle {
-    prevent_destroy = true
   }
 
   tags = {
@@ -27,8 +21,9 @@ resource "aws_s3_bucket" "tf_state" {
   }
 }
 
+# DynamoDB table for Terraform state locking
 resource "aws_dynamodb_table" "tf_lock" {
-  name         = var.dynamodb_table_name
+  name         = "${var.dynamodb_table_name}-${random_id.suffix.hex}"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
 
