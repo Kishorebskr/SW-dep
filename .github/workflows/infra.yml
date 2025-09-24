@@ -1,4 +1,5 @@
 name: Provision AWS Infra
+
 on:
   workflow_dispatch:
     inputs:
@@ -6,28 +7,42 @@ on:
         description: "Environment to provision (dev|prod)"
         required: true
         default: "dev"
+
 jobs:
   bootstrap-backend:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      bucket_name: ${{ steps.backend_output.outputs.bucket }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
       - name: Terraform Init (Backend)
         working-directory: terraform-backend
         run: terraform init
+
       - name: Terraform Apply (Backend)
         working-directory: terraform-backend
         run: terraform apply -auto-approve
+
+      - name: Get Backend Outputs
+        id: backend_output
+        working-directory: terraform-backend
+        run: |
+          echo "bucket=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
+
   provision-infra:
     runs-on: ubuntu-latest
     needs: bootstrap-backend
@@ -36,20 +51,26 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
       - name: Terraform Init (Infra)
         working-directory: terraform-aws-gitops
-        run: terraform init -backend-config="region=eu-central-1"
+        run: |
+          terraform init             -backend-config="bucket=${{ needs.bootstrap-backend.outputs.bucket_name }}"             -backend-config="key=eks/gitops/terraform.tfstate"             -backend-config="region=eu-central-1"             -backend-config="dynamodb_table=sw-terraform-locks"             -backend-config="encrypt=true"
+
       - name: Terraform Plan (Infra)
         working-directory: terraform-aws-gitops
         run: terraform plan -var-file="envs/${{ github.event.inputs.environment }}.tfvars"
+
       - name: Terraform Apply (Infra)
         working-directory: terraform-aws-gitops
         run: terraform apply -auto-approve -var-file="envs/${{ github.event.inputs.environment }}.tfvars"
