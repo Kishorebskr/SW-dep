@@ -15,6 +15,10 @@ module "eks" {
   cluster_endpoint_public_access  = true
   cluster_endpoint_private_access = true
 
+  # Disable default KMS key and CloudWatch log group creation
+  create_kms_key               = false
+  create_cloudwatch_log_group  = false
+
   eks_managed_node_groups = {
     default = {
       min_size     = 1
