@@ -1,2 +1,2 @@
-aws_region = "us-west-2"
+aws_region = "eu-central-1"
 cluster_name = "sw-eks-prod"

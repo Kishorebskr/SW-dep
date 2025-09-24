@@ -19,7 +19,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: eu-central-1
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
       - name: Terraform Init (Backend)
@@ -41,12 +41,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: eu-central-1
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
       - name: Terraform Init (Infra)
         working-directory: terraform-aws-gitops
-        run: terraform init -backend-config="region=us-east-1"
+        run: terraform init -backend-config="region=eu-central-1"
       - name: Terraform Plan (Infra)
         working-directory: terraform-aws-gitops
         run: terraform plan -var-file="envs/${{ github.event.inputs.environment }}.tfvars"
