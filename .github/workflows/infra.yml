@@ -1,0 +1,55 @@
+name: Provision AWS Infra
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to provision (dev|prod)"
+        required: true
+        default: "dev"
+jobs:
+  bootstrap-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform Init (Backend)
+        working-directory: terraform-backend
+        run: terraform init
+      - name: Terraform Apply (Backend)
+        working-directory: terraform-backend
+        run: terraform apply -auto-approve
+  provision-infra:
+    runs-on: ubuntu-latest
+    needs: bootstrap-backend
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform Init (Infra)
+        working-directory: terraform-aws-gitops
+        run: terraform init -backend-config="region=us-east-1"
+      - name: Terraform Plan (Infra)
+        working-directory: terraform-aws-gitops
+        run: terraform plan -var-file="envs/${{ github.event.inputs.environment }}.tfvars"
+      - name: Terraform Apply (Infra)
+        working-directory: terraform-aws-gitops
+        run: terraform apply -auto-approve -var-file="envs/${{ github.event.inputs.environment }}.tfvars"
