@@ -2,9 +2,6 @@ name: Deploy to EKS via GitOps
 
 on:
   # 1. Automatically trigger for 'dev' when code is pushed to the main branch
-  push:
-    branches:
-      - main
 
   # 2. Allow manual deployments to any environment
   workflow_dispatch:
@@ -61,21 +58,23 @@ jobs:
           export NEW_TAG="${{ steps.vars.outputs.image_tag }}"
           export NEW_REPO="${{ inputs.image_repository }}"
 
-          # Always update the image tag
-          echo "Updating $ENV_PATH with image tag: $NEW_TAG"
-          # FIX: Use '|' as the sed delimiter to safely handle slashes in the tag
-          sed -i "/image:/,/^[^[:space:]]/ s|tag:.*|tag: \"$NEW_TAG\"|" "$ENV_PATH"
-
-          # Only update the image repository if a new one was provided in the manual trigger
+          # If a new repository is provided, update BOTH the repository and the tag.
           if [[ -n "$NEW_REPO" ]]; then
-            echo "Updating $ENV_PATH with image repository: $NEW_REPO"
-            # This command already correctly uses '|' as the delimiter
+            echo "Updating $ENV_PATH with new repository: $NEW_REPO and tag: $NEW_TAG"
+            # Update repository
             sed -i "/image:/,/^[^[:space:]]/ s|repository:.*|repository: \"$NEW_REPO\"|" "$ENV_PATH"
+            # Update tag
+            sed -i "/image:/,/^[^[:space:]]/ s|tag:.*|tag: \"$NEW_TAG\"|" "$ENV_PATH"
+          else
+            # Otherwise, just update the tag for the existing repository.
+            echo "Updating $ENV_PATH with image tag: $NEW_TAG"
+            sed -i "/image:/,/^[^[:space:]]/ s|tag:.*|tag: \"$NEW_TAG\"|" "$ENV_PATH"
           fi
 
           echo "--- Updated $ENV_PATH ---"
           cat "$ENV_PATH"
           echo "-------------------------"
+
 
       - name: Commit and Push Changes
         run: |
