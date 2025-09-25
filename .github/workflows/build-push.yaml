@@ -5,6 +5,18 @@ on:
     branches: [ feature/01 ]
     paths:
       - 'helm/**'
+  # Add this section to enable manual triggering
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
 
 jobs:
   build:
@@ -33,4 +45,4 @@ jobs:
 
     - name: Upload chart to S3
       run: |
-        aws s3 cp ./chart-packages/ s3://my-helm-charts/ --recursive 
+        aws s3 cp ./chart-packages/ s3://my-helm-charts/ --recursive
