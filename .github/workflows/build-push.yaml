@@ -43,6 +43,15 @@ jobs:
         mkdir -p ./chart-packages
         helm package ./helm/web-application -d ./chart-packages
 
+    - name: Create S3 bucket if it doesn't exist
+      run: |
+        if ! aws s3 ls "s3://my-helm-charts" 2>&1 | grep -q 'NoSuchBucket'; then
+          echo "Bucket exists"
+        else
+          echo "Creating bucket"
+          aws s3api create-bucket --bucket my-helm-charts-wewewe --region us-east-1
+        fi
+
     - name: Upload chart to S3
       run: |
         aws s3 cp ./chart-packages/ s3://my-helm-charts/ --recursive
