@@ -33,4 +33,4 @@ jobs:
 
     - name: Upload chart to S3
       run: |
-        aws s3 cp ./chart-packages/ s3://my-helm-charts/ --recursive
+        aws s3 cp ./chart-packages/ s3://my-helm-charts/ --recursive 
