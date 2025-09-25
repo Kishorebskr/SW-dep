@@ -23,7 +23,10 @@ ingress:
   enabled: true
   className: "alb"
   annotations:
+    # This tells the controller to create an internet-facing ALB
     alb.ingress.kubernetes.io/scheme: internet-facing
+    # This is the required target type for EKS
+
     alb.ingress.kubernetes.io/target-type: ip
   hosts:
     - host: "" # Keep host empty for ALB to assign a DNS name
