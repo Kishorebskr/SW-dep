@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-conf
+  namespace: ingress-nginx
+data:
+  nginx.conf: "worker_processes auto;\n\nevents {\n  worker_connections 1024;\n}\n\nhttp {\n  sendfile on;\n  \n  upstream argocd_backend {\n    server argocd-server.argocd.svc.cluster.local:80;\n  }\n  \n  upstream production_backend {\n    server web-application.production.svc.cluster.local:80;\n  }\n  \n  upstream staging_backend {\n    server web-application.staging.svc.cluster.local:80;\n  }\n  \n  upstream development_backend {\n    server web-application.development.svc.cluster.local:80;\n  }\n  \n  server {\n    listen 80;\n    server_name argocd.example.com;\n    \n    location / {\n      proxy_pass http://argocd_backend;\n      proxy_set_header Host $host;\n      proxy_set_header X-Real-IP $remote_addr;\n    }\n  }\n  \n  server {\n    listen 80;\n    server_name app.production.example.com;\n    \n    location / {\n      proxy_pass http://production_backend;\n      proxy_set_header Host $host;\n      proxy_set_header X-Real-IP $remote_addr;\n    }\n  }\n  \n  server {\n    listen 80;\n    server_name app.staging.example.com;\n    \n    location / {\n      proxy_pass http://staging_backend;\n      proxy_set_header Host $host;\n      proxy_set_header X-Real-IP $remote_addr;\n    }\n  }\n  \n  server {\n    listen 80;\n    server_name app.dev.example.com;\n    \n    location / {\n      proxy_pass http://development_backend;\n      proxy_set_header Host $host;\n      proxy_set_header X-Real-IP $remote_addr;\n    }\n  }\n}"

@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web-app-development
+  namespace: argocd
+spec:
+  project: web-application
+  source:
+    repoURL: https://github.com/yourusername/kubernetes-gitops-project.git
+    targetRevision: HEAD
+    path: helm/web-application
+    helm:
+      valueFiles:
+        - environments/development.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: development
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

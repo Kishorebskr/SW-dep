@@ -1,0 +1,30 @@
+name: Update Values
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to update (production, staging, development)'
+        required: true
+        default: 'development'
+      appVersion:
+        description: 'Application version to deploy'
+        required: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Update application version in values
+      run: |
+        ./scripts/update-values.sh ${{ github.event.inputs.environment }} ${{ github.event.inputs.appVersion }}
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add helm/web-application/environments/${{ github.event.inputs.environment }}.yaml
+        git commit -m "Update ${{ github.event.inputs.environment }} to version ${{ github.event.inputs.appVersion }}"
+        git push

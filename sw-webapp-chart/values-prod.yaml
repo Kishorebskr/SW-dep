@@ -1,3 +1,0 @@
-image:
-  repository: <your-ecr-repo-url>
-  tag: "prod"
