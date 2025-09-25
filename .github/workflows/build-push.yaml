@@ -2,12 +2,10 @@ name: Build and Publish
 
 on:
   push:
-    branches: 
-      - feature/01
-      - main          # Add your main branch
-      - feature/01   # Replace with your current branch name
+    branches:
+      - feature/01    # This restricts automatic triggers to this branch only
     paths:
-      - 'helm/**'
+      - 'helm/**'     # Still only triggers on changes to files in the helm directory
   workflow_dispatch:
     inputs:
       environment:
