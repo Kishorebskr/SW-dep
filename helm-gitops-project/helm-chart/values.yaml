@@ -12,11 +12,13 @@ service:
   port: 80
   targetPort: 80
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
+  enabled: true
+  className: "alb"
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
   hosts:
-    - host: chart-example.local
+    - host: "" # Keep host empty for ALB to assign a DNS name
       paths:
         - path: /
-          pathType: ImplementationSpecific
+          pathType: Prefix
