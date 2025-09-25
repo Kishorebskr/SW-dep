@@ -5,7 +5,7 @@ port: 8080
 
 # This image tag will be updated by the GitHub Actions workflow
 image:
-  tag: "latest" # This will be whatever the last commit was
+  tag: "1a8f9a778588003e067362f6eb4e75fc6a5ad583"
 # You must include the service block here, otherwise it will be nil.
 
 service:
