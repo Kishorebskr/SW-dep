@@ -1,11 +1,28 @@
 deploymentName: my-web-app
 namespace: staging
 port: 8080
+# Values for the 'dev' environment
+
+# This image tag will be updated by the GitHub Actions workflow
+image:
+  tag: "latest" # This will be whatever the last commit was
+# You must include the service block here, otherwise it will be nil.
+
+service:
+  name: http
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+# You can also include other sections if you want to override them for dev
+
 ingress:
   enabled: true
-  hostnames:
-    - staging.my-web-app.local
-  path: /
+  className: "alb"
   annotations:
-    kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: "" # Keep host empty for ALB to assign a DNS name
+      paths:
+        - path: /
+          pathType: Prefix
