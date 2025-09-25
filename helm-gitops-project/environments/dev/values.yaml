@@ -1,0 +1,11 @@
+deploymentName: my-web-app
+namespace: dev
+port: 8080
+ingress:
+  enabled: true
+  hostnames:
+    - dev.my-web-app.local
+  path: /
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/rewrite-target: /
