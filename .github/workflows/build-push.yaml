@@ -2,10 +2,12 @@ name: Build and Publish
 
 on:
   push:
-    branches: [ feature/01 ]
+    branches: 
+      - feature/01
+      - main          # Add your main branch
+      - feature/01   # Replace with your current branch name
     paths:
       - 'helm/**'
-  # Add this section to enable manual triggering
   workflow_dispatch:
     inputs:
       environment:
