@@ -33,6 +33,10 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
+    - name: Debug AWS credentials
+      run: |
+        aws sts get-caller-identity
+
     - name: Set up Helm
       uses: azure/setup-helm@v3
       with:
@@ -45,7 +49,8 @@ jobs:
 
     - name: Create S3 bucket if it doesn't exist
       run: |
-        if ! aws s3 ls "s3://my-helm-charts" 2>&1 | grep -q 'NoSuchBucket'; then
+        # Using a consistent bucket name
+        if ! aws s3 ls "s3://my-helm-charts-wewewe" 2>&1 | grep -q 'NoSuchBucket'; then
           echo "Bucket exists"
         else
           echo "Creating bucket"
@@ -54,4 +59,5 @@ jobs:
 
     - name: Upload chart to S3
       run: |
-        aws s3 cp ./chart-packages/ s3://my-helm-charts/ --recursive
+        # Using the same bucket name as created above
+        aws s3 cp ./chart-packages/ s3://my-helm-charts-wewewe/ --recursive
