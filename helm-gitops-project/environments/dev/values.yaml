@@ -9,7 +9,7 @@ app:
 # This image tag will be updated by the GitHub Actions workflow
 
 image:
-  tag: "latest"
+  tag: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
 # This service block is required by the service.yaml template
 
 service:
