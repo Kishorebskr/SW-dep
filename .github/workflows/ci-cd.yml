@@ -78,5 +78,6 @@ jobs:
             git commit -m "Deploy: Update ${{ steps.vars.outputs.environment }} to image tag ${{ steps.vars.outputs.image_tag }}"
             git push
             echo "Pushed updated values.yaml to the repository."
+          fi
 
 
