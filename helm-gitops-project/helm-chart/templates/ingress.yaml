@@ -1,7 +1,9 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "web-app.fullname" . -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .Values.name }}
+  name: {{ $fullName }}
   namespace: {{ .Values.namespace }}
   annotations:
     kubernetes.io/ingress.class: "nginx"
@@ -17,3 +19,4 @@ spec:
                 name: {{ .Values.name }}
                 port:
                   number: {{ .Values.service.port }}
+{{- end -}}
