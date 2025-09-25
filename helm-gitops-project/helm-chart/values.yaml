@@ -1,0 +1,16 @@
+deploymentName: my-web-app
+namespace: default
+port: 8080
+ingress:
+  enabled: true
+  hostnames:
+    - my-web-app.local
+  path: /
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+image:
+  repository: nginxdemos/hello # Using a public demo image
+  pullPolicy: IfNotPresent
+  # This tag will be updated by the GitHub Actions workflow
+  tag: "latest"
