@@ -14,11 +14,7 @@ image:
 
 service:
   name: http
-  # This will create a public-facing AWS Load Balancer
-
   type: LoadBalancer
-  port: 80
-  targetPort: 80
 # Disable the Ingress resource since you are not using it
 
 ingress:
