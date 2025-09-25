@@ -6,12 +6,13 @@ on:
     branches:
       - main
 
+  # 2. Allow manual deployments to any environment
   workflow_dispatch:
     inputs:
       environment:
         description: 'Environment to deploy to'
         required: true
-        default: 'staging'
+        default: 'dev'
         type: choice
         options:
           - dev
@@ -20,23 +21,25 @@ on:
       image_tag:
         description: 'Image tag to deploy (e.g., commit SHA or version number)'
         required: true
+      # New optional input for the image repository
+      image_repository:
+        description: 'Optional: New image repository to use (e.g., my-docker-hub/my-prod-app)'
+        required: false
 
 jobs:
   update-manifest:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # <-- Add this line to allow the job to push to the repo
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # We need a token to be able to push to the repository
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine Environment and Tag
         id: vars
         run: |
-          # Logic to set the environment and tag based on the trigger
           if [[ "${{ github.event_name }}" == "push" ]]; then
             echo "TRIGGER: Push to main branch. Deploying to 'dev'."
             echo "environment=dev" >> $GITHUB_OUTPUT
@@ -56,12 +59,18 @@ jobs:
         run: |
           export ENV_PATH="helm-gitops-project/environments/${{ steps.vars.outputs.environment }}/values.yaml"
           export NEW_TAG="${{ steps.vars.outputs.image_tag }}"
+          export NEW_REPO="${{ inputs.image_repository }}"
 
+          # Always update the image tag
           echo "Updating $ENV_PATH with image tag: $NEW_TAG"
-          
-          # Use sed to find the 'tag:' line under 'image:' and replace its value.
-          # This is more robust than installing a specific tool version.
           sed -i "/image:/,/^[^[:space:]]/ s/tag:.*/tag: \"$NEW_TAG\"/" "$ENV_PATH"
+
+          # Only update the image repository if a new one was provided in the manual trigger
+          if [[ -n "$NEW_REPO" ]]; then
+            echo "Updating $ENV_PATH with image repository: $NEW_REPO"
+            # Use '|' as the sed delimiter to safely handle '/' in the repository name
+            sed -i "/image:/,/^[^[:space:]]/ s|repository:.*|repository: \"$NEW_REPO\"|" "$ENV_PATH"
+          fi
 
           echo "--- Updated $ENV_PATH ---"
           cat "$ENV_PATH"
@@ -73,7 +82,6 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           git add .
-          # Check if there are any changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
