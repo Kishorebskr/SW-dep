@@ -1,0 +1,76 @@
+name: Deploy to EKS via GitOps
+
+on:
+  # 1. Automatically trigger for 'dev' when code is pushed to the main branch
+  push:
+    branches:
+      - main
+
+  # 2. Allow manual deployments to any environment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      image_tag:
+        description: 'Image tag to deploy (e.g., commit SHA or version number)'
+        required: true
+
+jobs:
+  update-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # We need a token to be able to push to the repository
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine Environment and Tag
+        id: vars
+        run: |
+          # Logic to set the environment and tag based on the trigger
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "TRIGGER: Push to main branch. Deploying to 'dev'."
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "TRIGGER: Manual workflow. Deploying to '${{ inputs.environment }}'."
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "image_tag=${{ inputs.image_tag }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update values.yaml
+        run: |
+          # Use 'yq' to update the YAML file safely
+          # It's better than sed for structured data
+          pip3 install yq
+          export ENV_PATH="environments/${{ steps.vars.outputs.environment }}/values.yaml"
+          export NEW_TAG="${{ steps.vars.outputs.image_tag }}"
+
+          echo "Updating $ENV_PATH with image tag: $NEW_TAG"
+          yq -i ".image.tag = \"$NEW_TAG\"" "$ENV_PATH"
+
+          echo "--- Updated $ENV_PATH ---"
+          cat "$ENV_PATH"
+          echo "-------------------------"
+
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add .
+          # Check if there are any changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Deploy: Update ${{ steps.vars.outputs.environment }} to image tag ${{ steps.vars.outputs.image_tag }}"
+            git push
+            echo "Pushed updated values.yaml to the repository."
