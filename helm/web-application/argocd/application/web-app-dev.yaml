@@ -6,7 +6,7 @@ metadata:
 spec:
   project: web-application
   source:
-    repoURL: https://github.com/yourusername/kubernetes-gitops-project.git
+    repoURL: https://github.com/Kishorebskr/SW-dep.git
     targetRevision: HEAD
     path: helm/web-application
     helm:
