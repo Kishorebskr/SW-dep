@@ -3,17 +3,21 @@ namespace: dev
 port: 8080
 # Values for the 'dev' environment
 
+# This block is required by your templates
+app:
+  name: my-web-app-dev
 # This image tag will be updated by the GitHub Actions workflow
+
 image:
-  tag: "latest" # This will be whatever the last commit was
-# You must include the service block here, otherwise it will be nil.
+  tag: "latest"
+# This service block is required by the service.yaml template
 
 service:
   name: http
   type: ClusterIP
   port: 80
   targetPort: 80
-# You can also include other sections if you want to override them for dev
+# Ingress configuration for the dev environment
 
 ingress:
   enabled: true
@@ -22,7 +26,7 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
   hosts:
-    - host: "" # Keep host empty for ALB to assign a DNS name ##
+    - host: "" # Keep host empty for ALB to assign a DNS name
       paths:
         - path: /
           pathType: Prefix
