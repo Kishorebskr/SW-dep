@@ -5,20 +5,39 @@ replicaCount: 1
 image:
   repository: nginxdemos/hello
   pullPolicy: IfNotPresent
+  # This tag is a default and will be overridden by environment-specific values
+
   tag: "latest"
 service:
   name: http
-  type: ClusterIP
+  type: LoadBalancer
   port: 80
   targetPort: 80
+# Ingress is disabled by default.
+
+# It can be enabled in environment-specific value files if needed.
 ingress:
-  enabled: true
-  className: "alb"
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
+  enabled: false
+  className: ""
+  annotations: {}
   hosts:
-    - host: "" # Keep host empty for ALB to assign a DNS name
+    - host: chart-example.local
       paths:
         - path: /
-          pathType: Prefix
+          pathType: ImplementationSpecific
+resources: {}
+# limits:
+
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+# Default app block
+
+app:
+  name: my-web-app

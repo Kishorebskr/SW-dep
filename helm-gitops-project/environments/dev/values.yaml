@@ -14,13 +14,15 @@ image:
 
 service:
   name: http
-  type: ClusterIP
+  # This will create a public-facing AWS Load Balancer
+
+  type: LoadBalancer
   port: 80
   targetPort: 80
-# Ingress configuration for the dev environment
+# Disable the Ingress resource since you are not using it
 
 ingress:
-  enabled: true
+  enabled: false
   className: "alb"
   annotations:
     # This tells the controller to create an internet-facing ALB
