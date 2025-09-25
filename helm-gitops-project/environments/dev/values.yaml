@@ -22,7 +22,7 @@ ingress:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
   hosts:
-    - host: "" # Keep host empty for ALB to assign a DNS name
+    - host: "" # Keep host empty for ALB to assign a DNS name ##
       paths:
         - path: /
           pathType: Prefix
