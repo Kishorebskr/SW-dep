@@ -1,6 +1,6 @@
 deploymentName: my-web-app
 namespace: staging
-port: 8080
+port: 80
 # Values for the 'dev' environment
 
 # This image tag will be updated by the GitHub Actions workflow
