@@ -9,7 +9,7 @@ app:
 # This image tag will be updated by the GitHub Actions workflow
 
 image:
-  tag: "7e17b4896137bd0efbfa5f6f30309d3308c92592"
+  tag: "9138d664e52745052ef27624750960ae5b6fe7b3"
 # This service block is required by the service.yaml template
 
 service:
