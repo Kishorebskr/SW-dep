@@ -30,3 +30,12 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+# This block is required by the deployment.yaml template
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
