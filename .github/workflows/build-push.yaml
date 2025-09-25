@@ -3,9 +3,9 @@ name: Build and Publish
 on:
   push:
     branches:
-      - feature/01    # This restricts automatic triggers to this branch only
+      - feature/01
     paths:
-      - 'helm/**'     # Still only triggers on changes to files in the helm directory
+      - 'helm/**'
   workflow_dispatch:
     inputs:
       environment:
