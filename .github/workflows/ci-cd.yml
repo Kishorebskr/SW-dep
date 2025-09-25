@@ -63,12 +63,13 @@ jobs:
 
           # Always update the image tag
           echo "Updating $ENV_PATH with image tag: $NEW_TAG"
-          sed -i "/image:/,/^[^[:space:]]/ s/tag:.*/tag: \"$NEW_TAG\"/" "$ENV_PATH"
+          # FIX: Use '|' as the sed delimiter to safely handle slashes in the tag
+          sed -i "/image:/,/^[^[:space:]]/ s|tag:.*|tag: \"$NEW_TAG\"|" "$ENV_PATH"
 
           # Only update the image repository if a new one was provided in the manual trigger
           if [[ -n "$NEW_REPO" ]]; then
             echo "Updating $ENV_PATH with image repository: $NEW_REPO"
-            # Use '|' as the sed delimiter to safely handle '/' in the repository name
+            # This command already correctly uses '|' as the delimiter
             sed -i "/image:/,/^[^[:space:]]/ s|repository:.*|repository: \"$NEW_REPO\"|" "$ENV_PATH"
           fi
 
