@@ -24,6 +24,8 @@ on:
 jobs:
   update-manifest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # <-- Add this line to allow the job to push to the repo
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
