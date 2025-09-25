@@ -3,7 +3,7 @@ namespace: default
 port: 80
 replicaCount: 1
 image:
-  repository: nginxdemos/hello
+  repository: 990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev:latest
   pullPolicy: IfNotPresent
   # This tag is a default and will be overridden by environment-specific values
 
