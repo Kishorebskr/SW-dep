@@ -7,10 +7,10 @@ app:
   name: my-web-app-dev
 image:
   # This is the repository path.
-  repository: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
+  repository: "latest"
   # This is the tag. Your workflow will update this.
 
-  tag: "latest"
+  tag: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
 service:
   name: http
   type: LoadBalancer
