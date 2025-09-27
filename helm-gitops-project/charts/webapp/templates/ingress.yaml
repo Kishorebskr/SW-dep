@@ -16,7 +16,7 @@ spec:
     http:
       paths:
       - path: {{ $.Values.ingress.path | default (print "/" $.Release.Name) }}
-        pathType: Prefix
+        pathType: {{ if contains "(" $.Values.ingress.path }}ImplementationSpecific{{ else }}Prefix{{ end }}
         backend:
           service:
             name: {{ $.Values.deploymentName }}
@@ -28,7 +28,7 @@ spec:
   - http:
       paths:
       - path: {{ .Values.ingress.path | default (print "/" .Release.Name) }}
-        pathType: Prefix
+        pathType: {{ if contains "(" .Values.ingress.path }}ImplementationSpecific{{ else }}Prefix{{ end }}
         backend:
           service:
             name: {{ .Values.deploymentName }}
