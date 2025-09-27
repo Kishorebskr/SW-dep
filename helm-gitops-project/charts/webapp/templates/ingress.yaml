@@ -34,4 +34,14 @@ spec:
             name: {{ .Values.deploymentName }}
             port: 
               number: {{ .Values.service.port }}
+      {{- if .Values.ingress.addRootPath }}
+      # Additional rule for the root path
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.deploymentName }}
+            port: 
+              number: {{ .Values.service.port }}
+      {{- end }}
   {{- end }}
