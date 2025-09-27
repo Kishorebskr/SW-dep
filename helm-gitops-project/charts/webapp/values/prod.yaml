@@ -31,3 +31,5 @@ resources:
 env:
   - name: PUBLIC_URL
     value: /webapp-prod
+  - name: REACT_APP_BASE_PATH
+    value: /webapp-prod

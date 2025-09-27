@@ -21,10 +21,6 @@ spec:
           env:
             - name: ENVIRONMENT
               value: {{ .Values.environment }}
-            - name: PUBLIC_URL
-              value: {{ .Values.ingress.path | default "/" }}
-            - name: REACT_APP_BASE_PATH
-              value: {{ .Values.ingress.path | default "/" }}
             {{- range .Values.env }}
             - name: {{ .name }}
               value: {{ .value | quote }}
