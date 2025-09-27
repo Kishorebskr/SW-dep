@@ -48,100 +48,29 @@ jobs:
           sudo ./aws/install --update
           aws --version
           
-      - name: Verify AWS connectivity and permissions
+      - name: Verify AWS connectivity
         run: |
-          # Show caller identity for debugging
           echo "Current AWS identity:"
           aws sts get-caller-identity
           
-          # List clusters to verify access
           echo "Available EKS clusters:"
           aws eks list-clusters --region ap-south-1
-          
-          # Verify specific cluster exists
-          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
-          echo "Checking cluster $CLUSTER_NAME exists:"
-          aws eks describe-cluster --name $CLUSTER_NAME --region ap-south-1 --query "cluster.status"
 
-      - name: Configure kubectl with AWS EKS
-        run: |
-          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
-          REGION="ap-south-1"
-          
-          # Verify AWS identity again
-          echo "Using AWS identity:"
-          aws sts get-caller-identity
-          
-          # Clear any existing kubeconfig completely
-          rm -rf ~/.kube
-          mkdir -p ~/.kube
-          
-          # Get cluster details needed for manual setup
-          echo "Getting cluster endpoint..."
-          ENDPOINT=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.endpoint" --output text)
-          echo "Cluster endpoint: $ENDPOINT"
-          
-          echo "Getting cluster certificate..."
-          CA_DATA=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.certificateAuthority.data" --output text)
-          
-          # Create kubeconfig manually with explicit values
-          cat > ~/.kube/config << EOF
-          apiVersion: v1
-          kind: Config
-          current-context: eks-$CLUSTER_NAME
-          preferences: {}
-          clusters:
-          - cluster:
-              certificate-authority-data: $CA_DATA
-              server: $ENDPOINT
-            name: eks-$CLUSTER_NAME
-          contexts:
-          - context:
-              cluster: eks-$CLUSTER_NAME
-              user: eks-$CLUSTER_NAME
-            name: eks-$CLUSTER_NAME
-          users:
-          - name: eks-$CLUSTER_NAME
-            user:
-              exec:
-                apiVersion: client.authentication.k8s.io/v1alpha1
-                command: aws
-                args:
-                  - "eks"
-                  - "get-token"
-                  - "--cluster-name"
-                  - "$CLUSTER_NAME"
-                  - "--region"
-                  - "$REGION"
-          EOF
-          
-          # Set permissions on kubeconfig
-          chmod 600 ~/.kube/config
-          
-          # Export kubeconfig path
-          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
-          
-          # Verify the kubeconfig file exists and has content
-          echo "Kubeconfig file size: $(wc -l < ~/.kube/config) lines"
-          ls -la ~/.kube/
+      # Using a specialized GitHub Action for EKS authentication
+      - name: Set up kubeconfig
+        uses: aws-actions/amazon-eks-kubectl@v1
+        with:
+          cluster-name: ${{ secrets.EKS_CLUSTER_NAME }}
+          aws-region: ap-south-1
 
       - name: Verify Kubernetes connection
         run: |
-          echo "Using kubeconfig at $KUBECONFIG"
+          echo "Testing kubectl connectivity..."
+          kubectl version --client
+          kubectl cluster-info
           
-          # Display kubeconfig content
-          echo "Kubeconfig content (sanitized):"
-          grep -v "certificate-authority-data\|token" ~/.kube/config || true
-          
-          # Check contexts
-          echo "Available contexts:"
-          kubectl config get-contexts
-          
-          # Try cluster-info directly with token
-          echo "Getting cluster info with direct token..."
-          TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 | jq -r '.status.token')
-          ENDPOINT=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
-          curl -s --header "Authorization: Bearer $TOKEN" --insecure $ENDPOINT/api/v1/namespaces || echo "Failed to connect using token"
+          echo "Checking nodes..."
+          kubectl get nodes
 
       - name: Create namespaces
         run: |
