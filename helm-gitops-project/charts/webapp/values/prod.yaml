@@ -1,14 +1,22 @@
 deploymentName: webapp-prod
 namespace: production
+environment: production
 port: 80
+replicaCount: 2
+image:
+  repository: 990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev
+  tag: latest
+  pullPolicy: Always
+service:
+  type: ClusterIP
+  port: 80
+# Simple ingress config without domain
 ingress:
   enabled: true
-  hostnames:
-    - webapp-prod.local
+  hostnames: [] # No hostnames - will use the default rule with no host
   path: /
   annotations:
     kubernetes.io/ingress.class: nginx
-    nginx.ingress.kubernetes.io/rewrite-target: /
 resources:
   requests:
     memory: "128Mi"

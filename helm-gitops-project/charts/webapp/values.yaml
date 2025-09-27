@@ -1,25 +1,20 @@
-deploymentName: my-webapp
+# Default values for webapp chart
+deploymentName: webapp
 namespace: default
-port: 8080
-ingress:
-  enabled: true
-  hostnames:
-    - my-webapp.local
-    - dev.my-webapp.local
-  path: /
-  annotations: {}
-resources: {}
+replicaCount: 1
+environment: production
+# Image configuration
 image:
-  repository: my-webapp-image
+  repository: 990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
+# Service configuration
 service:
   type: ClusterIP
   port: 80
-  targetPort: 8080
-  annotations: {}
-env:
-  - name: ENVIRONMENT
-    value: "development"  # Change to "production" in prod.yaml
-  - name: APP_VERSION
-    value: "1.0.0"  # Update as needed
+# Ingress configuration
+ingress:
+  enabled: true
+  hostnames:
+    - webapp.local
+  path: /

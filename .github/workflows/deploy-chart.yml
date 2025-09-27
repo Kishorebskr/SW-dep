@@ -1,6 +1,16 @@
 name: Deploy Helm Chart
 
 on:
+  workflow_dispatch:
+    inputs:
+      imageRepo:
+        description: 'Docker image repository'
+        required: false
+        default: '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev'
+      imageTag:
+        description: 'Docker image tag'
+        required: false
+        default: 'latest'
   push:
     branches:
       - main
@@ -56,11 +66,25 @@ jobs:
       - name: Deploy Helm Chart to Development
         if: github.ref == 'refs/heads/dev'
         run: |
-          helm upgrade --install webapp ./helm-gitops-project/charts/webapp --values ./helm-gitops-project/charts/webapp/values/dev.yaml -n dev
+          IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
+          IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
+          
+          helm upgrade --install webapp ./helm-gitops-project/charts/webapp \
+            --values ./helm-gitops-project/charts/webapp/values/dev.yaml \
+            --set image.repository=$IMAGE_REPO \
+            --set image.tag=$IMAGE_TAG \
+            -n dev
 
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
         run: |
-          helm upgrade --install webapp ./helm-gitops-project/charts/webapp --values ./helm-gitops-project/charts/webapp/values/prod.yaml -n production
+          IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
+          IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
+          
+          helm upgrade --install webapp ./helm-gitops-project/charts/webapp \
+            --values ./helm-gitops-project/charts/webapp/values/prod.yaml \
+            --set image.repository=$IMAGE_REPO \
+            --set image.tag=$IMAGE_TAG \
+            -n production
 
 

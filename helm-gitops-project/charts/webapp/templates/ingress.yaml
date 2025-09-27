@@ -3,27 +3,34 @@ kind: Ingress
 metadata:
   name: {{ .Values.deploymentName }}-ingress
   namespace: {{ .Values.namespace }}
+  {{- with .Values.ingress.annotations }}
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   rules:
-    - host: {{ .Values.ingress.host }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Values.deploymentName }}-service
-                port:
-                  number: {{ .Values.service.port }}
-    - host: "*"
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Values.deploymentName }}-service
-                port:
-                  number: {{ .Values.service.port }}
+  {{- if .Values.ingress.hostnames }}
+  {{- range .Values.ingress.hostnames }}
+  - host: {{ . }}
+    http:
+      paths:
+      - path: {{ $.Values.ingress.path | default "/" }}
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ $.Values.deploymentName }}
+            port: 
+              number: {{ $.Values.service.port }}
+  {{- end }}
+  {{- else }}
+  # Default rule with no host - this will match any hostname
+  - http:
+      paths:
+      - path: {{ .Values.ingress.path | default "/" }}
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.deploymentName }}
+            port: 
+              number: {{ .Values.service.port }}
+  {{- end }}
