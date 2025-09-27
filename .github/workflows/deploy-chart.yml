@@ -31,8 +31,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name 5cluster4 --region ap-south-1
+      - name: List available EKS clusters
+        run: aws eks list-clusters --region ap-south-1
+
+      # Use the direct kubeconfig approach as a fallback
+      - name: Configure kubeconfig directly
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
 
       - name: Verify Kubernetes connection
         run: kubectl get nodes
