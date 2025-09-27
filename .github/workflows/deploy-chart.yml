@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       imageRepo:
-        description: 'Docker image repository'
+        description: "Docker image repository"
         required: false
-        default: '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev'
+        default: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
       imageTag:
-        description: 'Docker image tag'
+        description: "Docker image tag"
         required: false
-        default: 'latest'
+        default: "latest"
   push:
     branches:
       - main
@@ -21,97 +21,134 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ----------------------------
+      # 1. Checkout repository
+      # ----------------------------
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set up Helm
-        uses: azure/setup-helm@v1
-        with:
-          version: '3.8.0'
+      # ----------------------------
+      # 2. Install prerequisites
+      # ----------------------------
+      - name: Install CLI tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq unzip curl
 
-      - name: Set up Kubernetes
-        uses: azure/setup-kubectl@v1
-        with:
-          version: 'latest'
+      # ----------------------------
+      # 3. Install AWS CLI v2
+      # ----------------------------
+      - name: Install AWS CLI v2
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -q awscliv2.zip
+          sudo ./aws/install --update
+          aws --version
 
+      # ----------------------------
+      # 4. Configure AWS credentials
+      # ----------------------------
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      - name: Install AWS CLI v2
+      # ----------------------------
+      # 5. Verify AWS identity and EKS access
+      # ----------------------------
+      - name: Verify AWS identity and EKS cluster
         run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install --update
-          aws --version
-          
-      # Install jq for JSON parsing
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-          
-      - name: Verify AWS connectivity and permissions
-        run: |
-          # Show caller identity for debugging
-          echo "Current AWS identity:"
+          echo "🔍 Checking AWS Identity..."
           aws sts get-caller-identity
           
-          # List clusters to verify access
-          echo "Available EKS clusters:"
+          echo "🔍 Listing available EKS clusters..."
           aws eks list-clusters --region ap-south-1
           
-          # Verify specific cluster exists
-          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
-          echo "Checking cluster $CLUSTER_NAME exists:"
-          aws eks describe-cluster --name $CLUSTER_NAME --region ap-south-1 --query "cluster.status"
+          echo "🔍 Describing cluster..."
+          aws eks describe-cluster --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ap-south-1 --query "cluster.status"
 
-      - name: Configure kubectl with AWS EKS
+      # ----------------------------
+      # 6. Configure kubectl access for EKS
+      # ----------------------------
+      - name: Configure kubectl for EKS
         run: |
-          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
           REGION="ap-south-1"
+          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
           
-          aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION
+          echo "🧩 Setting up kubeconfig..."
+          mkdir -p ~/.kube
+          rm -f ~/.kube/config
+          aws eks update-kubeconfig --region "$REGION" --name "$CLUSTER_NAME" --alias eks-github
+          
+          echo "✅ kubeconfig configured successfully."
+          echo "🔍 Cluster info:"
+          kubectl cluster-info
+          echo "🔍 Nodes:"
+          kubectl get nodes || echo "⚠️ Unable to list nodes (check RBAC)."
 
+      # ----------------------------
+      # 7. Install Helm
+      # ----------------------------
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "3.14.4"
+
+      # ----------------------------
+      # 8. Verify Kubernetes connectivity
+      # ----------------------------
       - name: Verify Kubernetes connection
         run: |
-          echo "Verifying kubectl configuration..."
-          kubectl config view
+          echo "🔍 Current context:"
+          kubectl config current-context
           
-          echo "Verifying connection to cluster..."
-          kubectl cluster-info
+          echo "🔍 Namespaces available:"
+          kubectl get ns
 
+      # ----------------------------
+      # 9. Create namespaces (idempotent)
+      # ----------------------------
       - name: Create namespaces
         run: |
           kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
           kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
 
+      # ----------------------------
+      # 10. Deploy Helm Chart to DEV
+      # ----------------------------
       - name: Deploy Helm Chart to Development
         if: github.ref == 'refs/heads/dev'
         run: |
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
           
+          echo "🚀 Deploying to Development environment..."
           helm upgrade --install webapp ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/dev.yaml \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
-            -n dev
+            -n dev \
+            --create-namespace
+          
+          echo "✅ Development deployment completed successfully."
 
+      # ----------------------------
+      # 11. Deploy Helm Chart to PROD
+      # ----------------------------
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
         run: |
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
           
+          echo "🚀 Deploying to Production environment..."
           helm upgrade --install webapp ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/prod.yaml \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
-            -n production
-
-
-
-
-
+            -n production \
+            --create-namespace
+          
+          echo "✅ Production deployment completed successfully."
