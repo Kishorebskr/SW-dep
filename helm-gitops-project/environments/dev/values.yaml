@@ -3,10 +3,10 @@ deploymentName: my-web-app-dev
 namespace: dev
 replicaCount: 1
 image:
-  repository: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
+  repository: "latest"
   # This tag will be updated by your CI/CD workflow
 
-  tag: "latest"
+  tag: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
 service:
   type: ClusterIP # Use ClusterIP when Ingress is enabled
   port: 80
