@@ -8,23 +8,27 @@ data:
     server {
       listen 80;
       root /usr/share/nginx/html;
+      index index.html index.htm;
       
       # Enable debug logging
       error_log /dev/stderr debug;
       
-      # Critical fix for SPA routing
+      # Simple path-based routing for standard web app
       location {{ .Values.ingress.path | default "/" }} {
         alias /usr/share/nginx/html/;
-        index index.html;
-        try_files $uri $uri/ {{ .Values.ingress.path | default "/" }}/index.html;
-        
-        # Important for React Router
-        if (!-e $request_filename) {
-          rewrite ^ {{ .Values.ingress.path | default "/" }}/index.html last;
-        }
+        index index.html index.htm;
+        # Standard directory listing - no SPA handling
+        autoindex on;
       }
       
+      # Default location
       location / {
-        try_files $uri $uri/ /index.html;
+        index index.html index.htm;
+      }
+      
+      # Handle static files with proper headers
+      location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
+        expires 7d;
+        add_header Cache-Control "public";
       }
     }
