@@ -68,24 +68,45 @@ jobs:
           CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
           REGION="ap-south-1"
           
-          # Use aws cli directly to configure kubectl
-          aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION
+          # Clear any existing kubeconfig
+          rm -f ~/.kube/config || true
+          mkdir -p ~/.kube
           
-          # Verify kubeconfig was created properly
-          ls -la ~/.kube/
+          # Generate kubeconfig with verbose output
+          aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION --verbose
+          
+          # Display kubeconfig details
+          echo "Kubeconfig content (redacted):"
+          kubectl config view
+          
+          # Explicitly set the current context
+          CONTEXT_NAME=$(kubectl config get-contexts -o name | grep $CLUSTER_NAME)
+          if [ -n "$CONTEXT_NAME" ]; then
+            echo "Setting current context to: $CONTEXT_NAME"
+            kubectl config use-context $CONTEXT_NAME
+          else
+            echo "Error: No context found for cluster $CLUSTER_NAME"
+            kubectl config get-contexts
+            exit 1
+          fi
           
           # Export kubeconfig path
           echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
-          
-          # Display kubectl version to verify installation
-          kubectl version --client
 
       - name: Verify Kubernetes connection
         run: |
           echo "Using kubeconfig at $KUBECONFIG"
-          kubectl config view --minify
+          
+          # Check all contexts
+          echo "Available contexts:"
+          kubectl config get-contexts
+          
+          # View current context
+          echo "Current context:"
+          kubectl config current-context
+          
+          # Try cluster-info without minify option
           kubectl cluster-info
-          kubectl get nodes
 
       - name: Create namespaces
         run: |
