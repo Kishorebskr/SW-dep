@@ -3,26 +3,27 @@ namespace: staging
 port: 80
 # Values for the 'dev' environment
 
-# This image tag will be updated by the GitHub Actions workflow
+app:
+  name: my-web-app-dev
 image:
-  tag: "latest" # This will be whatever the last commit was
-# You must include the service block here, otherwise it will be nil.
+  # This is the repository path.
+  repository: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
+  # This is the tag. Your workflow will update this.
 
+  tag: "latest"
 service:
   name: http
-  type: ClusterIP
+  type: LoadBalancer
   port: 80
   targetPort: 80
-# You can also include other sections if you want to override them for dev
+# Ingress is disabled for this environment
 
 ingress:
-  enabled: true
-  className: "alb"
-  annotations:
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-  hosts:
-    - host: "" # Keep host empty for ALB to assign a DNS name
-      paths:
-        - path: /
-          pathType: Prefix
+  enabled: false
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
