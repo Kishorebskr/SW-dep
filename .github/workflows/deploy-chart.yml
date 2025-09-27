@@ -48,6 +48,10 @@ jobs:
           sudo ./aws/install --update
           aws --version
           
+      # Install jq for JSON parsing
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+          
       - name: Verify AWS connectivity and permissions
         run: |
           # Show caller identity for debugging
@@ -84,7 +88,7 @@ jobs:
           echo "Getting cluster certificate..."
           CA_DATA=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.certificateAuthority.data" --output text)
           
-          # Create kubeconfig manually with explicit values
+          # Create kubeconfig manually with explicit values - using updated apiVersion
           cat > ~/.kube/config << EOF
           apiVersion: v1
           kind: Config
@@ -104,7 +108,7 @@ jobs:
           - name: eks-$CLUSTER_NAME
             user:
               exec:
-                apiVersion: client.authentication.k8s.io/v1alpha1
+                apiVersion: client.authentication.k8s.io/v1beta1
                 command: aws
                 args:
                   - "eks"
@@ -137,11 +141,16 @@ jobs:
           echo "Available contexts:"
           kubectl config get-contexts
           
-          # Try cluster-info directly with token
-          echo "Getting cluster info with direct token..."
-          TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 | jq -r '.status.token')
-          ENDPOINT=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
-          curl -s --header "Authorization: Bearer $TOKEN" --insecure $ENDPOINT/api/v1/namespaces || echo "Failed to connect using token"
+          # Simple direct kubectl command to verify connectivity
+          kubectl cluster-info
+          
+          # If needed, try a more direct token approach
+          if [ $? -ne 0 ]; then
+            echo "Trying direct token approach..."
+            TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 --output json | jq -r '.status.token')
+            ENDPOINT=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
+            curl -s --header "Authorization: Bearer $TOKEN" --insecure $ENDPOINT/api/v1/namespaces
+          fi
 
       - name: Create namespaces
         run: |
