@@ -24,17 +24,16 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Create kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          # Check if the secret is base64 encoded and decode if needed
-          if [[ $(echo "${{ secrets.KUBE_CONFIG }}" | grep -E '^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$') ]]; then
-            echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
-          else
-            echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
-          fi
-          chmod 600 $HOME/.kube/config
-          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name 5cluster4 --region ap-south-1
+
       - name: Verify Kubernetes connection
         run: kubectl get nodes
 
