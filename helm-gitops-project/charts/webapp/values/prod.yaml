@@ -14,11 +14,12 @@ service:
 ingress:
   enabled: true
   className: nginx
-  path: /webapp-prod # Unique path for production
+  path: /webapp-prod(/|$)(.*) # Unique path for production
   hostnames:
     - webapp.local
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 resources:
   requests:
@@ -27,3 +28,6 @@ resources:
   limits:
     memory: "256Mi"
     cpu: "200m"
+env:
+  - name: PUBLIC_URL
+    value: /webapp-prod
