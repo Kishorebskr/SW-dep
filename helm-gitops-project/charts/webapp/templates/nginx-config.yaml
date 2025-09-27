@@ -9,9 +9,19 @@ data:
       listen 80;
       root /usr/share/nginx/html;
       
+      # Enable debug logging
+      error_log /dev/stderr debug;
+      
+      # Critical fix for SPA routing
       location {{ .Values.ingress.path | default "/" }} {
         alias /usr/share/nginx/html/;
+        index index.html;
         try_files $uri $uri/ {{ .Values.ingress.path | default "/" }}/index.html;
+        
+        # Important for React Router
+        if (!-e $request_filename) {
+          rewrite ^ {{ .Values.ingress.path | default "/" }}/index.html last;
+        }
       }
       
       location / {

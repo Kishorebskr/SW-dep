@@ -11,6 +11,7 @@ service:
   type: ClusterIP
   port: 80
 # Simple ingress config without domain
+
 ingress:
   enabled: true
   className: nginx
@@ -33,3 +34,7 @@ env:
     value: "/webapp-prod"
   - name: REACT_APP_BASE_PATH
     value: "/webapp-prod"
+  - name: DEBUG
+    value: "true"
+  - name: NODE_ENV
+    value: "production"

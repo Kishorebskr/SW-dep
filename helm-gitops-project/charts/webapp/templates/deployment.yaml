@@ -22,8 +22,10 @@ spec:
               # Create webapp-prod directory
               mkdir -p /usr/share/nginx/html/webapp-prod
               
-              # Copy ALL content to the webapp-prod directory
-              cp -r /usr/share/nginx/html/* /usr/share/nginx/html/webapp-prod/ 2>/dev/null || true
+              # Copy specific files to avoid recursive copy issues
+              for file in $(ls -A /usr/share/nginx/html/ | grep -v "webapp-prod"); do
+                cp -r /usr/share/nginx/html/$file /usr/share/nginx/html/webapp-prod/ 2>/dev/null || true
+              done
               
               # Create redirect from root
               echo '<html><head><meta http-equiv="refresh" content="0;URL=/webapp-prod/"></head></html>' > /usr/share/nginx/html/index.html
@@ -69,6 +71,12 @@ spec:
               {{- end }}
             {{- end }}
           {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
       volumes:
         - name: html
           emptyDir: {}
