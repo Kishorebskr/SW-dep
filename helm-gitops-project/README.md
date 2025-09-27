@@ -10,71 +10,70 @@ The project is organized as follows:
 helm-gitops-project
 ├── .github
 │   └── workflows
-│       └── ci-cd.yml          # GitHub Actions workflow for CI/CD
-├── environments
-│   ├── dev
-│   │   └── values.yaml        # Development environment configuration
-│   ├── prod
-│   │   └── values.yaml        # Production environment configuration
-│   └── staging
-│       └── values.yaml        # Staging environment configuration
-├── helm-chart
-│   ├── templates
-│   │   ├── _helpers.tpl       # Helper templates for reuse
-│   │   ├── deployment.yaml     # Kubernetes Deployment resource
-│   │   ├── ingress.yaml        # Ingress resource for external access
-│   │   ├── NOTES.txt           # Notes and instructions post-deployment
-│   │   └── service.yaml        # Kubernetes Service resource
-│   ├── Chart.yaml              # Metadata about the Helm chart
-│   └── values.yaml             # Default configuration values
+│       ├── package-chart.yml        # GitHub Actions workflow for packaging the Helm chart
+│       └── deploy-chart.yml         # GitHub Actions workflow for deploying the Helm chart
+├── charts
+│   └── webapp
+│       ├── Chart.yaml               # Metadata about the Helm chart
+│       ├── values.yaml              # Default values for the Helm chart
+│       ├── templates
+│       │   ├── deployment.yaml       # Kubernetes Deployment resource template
+│       │   ├── service.yaml          # Kubernetes Service resource template
+│       │   ├── ingress.yaml          # Ingress resource template
+│       │   ├── configmap.yaml        # ConfigMap resource template
+│       │   ├── _helpers.tpl          # Helper templates
+│       │   └── NOTES.txt             # Instructions after installation
+│       └── values
+│           ├── dev.yaml              # Development environment-specific values
+│           └── prod.yaml             # Production environment-specific values
 ├── scripts
-│   └── deploy.sh               # Automation script for deployment
-└── README.md                   # Project documentation
+│   ├── package-chart.sh              # Script to package the Helm chart
+│   ├── update-values.py              # Script to update custom values files
+│   └── deploy-chart.sh                # Script to deploy the Helm chart
+├── argocd
+│   ├── application-dev.yaml           # ArgoCD application configuration for development
+│   └── application-prod.yaml          # ArgoCD application configuration for production
+└── README.md                          # Project documentation
 ```
 
 ## Features
 
-- **Configurable Deployment**: Easily configure the deployment name, namespace, port, and ingress hostnames through environment-specific values files.
-- **GitOps Approach**: Leverage GitHub Actions for CI/CD to automate the packaging and deployment of Helm charts.
-- **Multi-Environment Support**: Separate values files for development, staging, and production environments to ensure tailored configurations.
+- **Configurable Deployment**: The Helm chart allows for configurable deployment names, namespaces, ports, and ingress hostnames.
+- **Environment-Specific Values**: Separate values files for development and production environments enable easy customization.
+- **Automation Scripts**: Scripts are provided to automate the packaging and deployment of the Helm chart, as well as to update values files.
 
 ## Getting Started
 
-### Prerequisites
+1. **Prerequisites**:
+   - Ensure you have [Helm](https://helm.sh/docs/intro/install/) installed.
+   - Have access to a Kubernetes cluster.
+   - Install [ArgoCD](https://argo-cd.readthedocs.io/en/stable/).
 
-- A Kubernetes cluster (local or cloud-based)
-- Helm installed on your local machine
-- Access to a GitHub repository for CI/CD
+2. **Packaging the Helm Chart**:
+   - Run the following command to package the Helm chart:
+     ```
+     ./scripts/package-chart.sh
+     ```
 
-### Setup Instructions
+3. **Updating Values**:
+   - Use the Python script to update values in the custom values files:
+     ```
+     python scripts/update-values.py <environment> <key> <value>
+     ```
 
-1. **Clone the Repository**:
-   ```bash
-   git clone <repository-url>
-   cd helm-gitops-project
-   ```
+4. **Deploying the Helm Chart**:
+   - Deploy the chart to your Kubernetes cluster:
+     ```
+     ./scripts/deploy-chart.sh <environment>
+     ```
 
-2. **Configure Environment Values**:
-   Update the `values.yaml` files in the `environments` directory to set your desired configurations for each environment.
+5. **ArgoCD Setup**:
+   - Configure ArgoCD applications using the provided YAML files in the `argocd` directory for both development and production environments.
 
-3. **Deploy the Application**:
-   Use the provided `deploy.sh` script to package and deploy the Helm chart:
-   ```bash
-   ./scripts/deploy.sh <environment>
-   ```
-   Replace `<environment>` with `dev`, `staging`, or `prod`.
+## Contributing
 
-4. **Access the Application**:
-   After deployment, follow the instructions in `helm-chart/templates/NOTES.txt` to access your application.
+Feel free to contribute to this project by submitting issues or pull requests. Ensure that you follow the project's coding standards and guidelines.
 
-## CI/CD Workflow
+## License
 
-The GitHub Actions workflow defined in `.github/workflows/ci-cd.yml` automates the following steps:
-
-- Package the Helm chart
-- Update custom values based on the environment
-- Deploy the Helm chart to the specified Kubernetes cluster
-
-## Conclusion
-
-This project provides a robust framework for deploying web applications using Helm and GitOps principles. By following the setup instructions, you can easily manage deployments across multiple environments while maintaining consistency and flexibility.
+This project is licensed under the MIT License. See the LICENSE file for more details.

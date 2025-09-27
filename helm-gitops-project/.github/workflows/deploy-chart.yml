@@ -1,0 +1,34 @@
+name: Deploy Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Kubernetes
+        uses: azure/setup-kubectl@v1
+        with:
+          version: 'latest'
+
+      - name: Authenticate to Kubernetes
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+          export KUBECONFIG=$(pwd)/kubeconfig
+
+      - name: Deploy Helm Chart to Development
+        if: github.ref == 'refs/heads/dev'
+        run: |
+          helm upgrade --install webapp charts/webapp --values charts/webapp/values/dev.yaml
+
+      - name: Deploy Helm Chart to Production
+        if: github.ref == 'refs/heads/main'
+        run: |
+          helm upgrade --install webapp charts/webapp --values charts/webapp/values/prod.yaml

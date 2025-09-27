@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: {{ .Values.namespace }}
+data:
+  # Configuration data for the web application
+  APP_ENV: {{ .Values.appEnv }}
+  APP_PORT: "{{ .Values.port }}"
+  APP_HOST: "{{ .Values.host }}"

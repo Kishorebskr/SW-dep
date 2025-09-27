@@ -1,0 +1,25 @@
+deploymentName: my-webapp
+namespace: default
+port: 8080
+ingress:
+  enabled: true
+  hostnames:
+    - my-webapp.local
+    - dev.my-webapp.local
+  path: /
+  annotations: {}
+resources: {}
+image:
+  repository: my-webapp-image
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  annotations: {}
+env:
+  - name: ENVIRONMENT
+    value: "development"  # Change to "production" in prod.yaml
+  - name: APP_VERSION
+    value: "1.0.0"  # Update as needed
