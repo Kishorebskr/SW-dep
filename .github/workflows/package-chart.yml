@@ -24,7 +24,7 @@ jobs:
           helm package ./helm-gitops-project/charts/webapp --destination ./helm-gitops-project/charts/webapp/packages
 
       - name: Upload Helm Chart
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: webapp-chart
           path: ./helm-gitops-project/charts/webapp/packages/*.tgz

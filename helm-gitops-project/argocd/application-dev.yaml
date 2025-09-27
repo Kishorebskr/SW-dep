@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: 'https://github.com/Kishorebskr/SW-dep.git'
     targetRevision: HEAD
-    path: charts/webapp
+    path: helm-gitops-project/charts/webapp
     helm:
       valueFiles:
         - values/dev.yaml
@@ -19,6 +19,3 @@ spec:
     automated:
       prune: true
       selfHeal: true
-    syncWindow:
-      schedule: '0 0 * * *'
-      duration: 2h
