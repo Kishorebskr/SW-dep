@@ -34,6 +34,8 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq unzip curl
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
 
       # ----------------------------
       # 3. Install AWS CLI v2
@@ -89,7 +91,34 @@ jobs:
           kubectl get nodes || echo "⚠️ Unable to list nodes (check RBAC)."
 
       # ----------------------------
-      # 7. Install Helm
+      # 7. Grant GitHub IAM access to EKS (one-time auto patch)
+      # ----------------------------
+      - name: Grant GitHub IAM access to EKS (one-time auto patch)
+        run: |
+          echo "🔧 Patching aws-auth ConfigMap to include GitHub IAM user..."
+          AWS_USER_ARN=$(aws sts get-caller-identity --query Arn --output text)
+          echo "Detected GitHub IAM ARN: $AWS_USER_ARN"
+          
+          # This command requires the user who created the cluster to have already mapped the role.
+          # If this fails, it's because the initial permissions to edit aws-auth are missing.
+          if ! kubectl get configmap aws-auth -n kube-system -o yaml > aws-auth.yaml; then
+            echo "❌ Failed to get aws-auth ConfigMap. The IAM user/role '$AWS_USER_ARN' likely lacks initial permissions."
+            echo "Please ensure the user/role that created the EKS cluster has mapped this role in the aws-auth ConfigMap."
+            exit 1
+          fi
+
+          if ! grep -q "$AWS_USER_ARN" aws-auth.yaml; then
+            echo "🧩 Adding missing IAM user mapping..."
+            # Using yq to add the user to mapUsers
+            yq eval ".data.mapUsers += \"- userarn: $AWS_USER_ARN\n  username: github-actions\n  groups:\n    - system:masters\n\"" -i aws-auth.yaml
+            kubectl apply -f aws-auth.yaml -n kube-system
+            echo "✅ GitHub IAM user mapped successfully."
+          else
+            echo "✅ GitHub IAM user already exists in aws-auth."
+          fi
+
+      # ----------------------------
+      # 8. Install Helm
       # ----------------------------
       - name: Set up Helm
         uses: azure/setup-helm@v4
@@ -97,7 +126,7 @@ jobs:
           version: "3.14.4"
 
       # ----------------------------
-      # 8. Verify Kubernetes connectivity
+      # 9. Verify Kubernetes connectivity
       # ----------------------------
       - name: Verify Kubernetes connection
         run: |
@@ -108,7 +137,7 @@ jobs:
           kubectl get ns
 
       # ----------------------------
-      # 9. Create namespaces (idempotent)
+      # 10. Create namespaces (idempotent)
       # ----------------------------
       - name: Create namespaces
         run: |
@@ -116,7 +145,7 @@ jobs:
           kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
 
       # ----------------------------
-      # 10. Deploy Helm Chart to DEV
+      # 11. Deploy Helm Chart to DEV
       # ----------------------------
       - name: Deploy Helm Chart to Development
         if: github.ref == 'refs/heads/dev'
@@ -135,7 +164,7 @@ jobs:
           echo "✅ Development deployment completed successfully."
 
       # ----------------------------
-      # 11. Deploy Helm Chart to PROD
+      # 12. Deploy Helm Chart to PROD
       # ----------------------------
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
