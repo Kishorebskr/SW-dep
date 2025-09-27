@@ -41,15 +41,30 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
+      - name: Install AWS CLI v2
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --update
+          aws --version
+
       - name: List available EKS clusters
         run: aws eks list-clusters --region ap-south-1
 
-      - name: Update kubeconfig with AWS IAM Authenticator
+      - name: Update kubeconfig and verify authentication
         run: |
-          curl -o aws-iam-authenticator https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator
-          chmod +x ./aws-iam-authenticator
-          sudo mv aws-iam-authenticator /usr/local/bin/
           aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1
+          
+          # Verify AWS identity being used
+          aws sts get-caller-identity
+          
+          # Create token file manually
+          TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 | jq -r '.status.token')
+          echo "Using token for authentication"
+          
+          # Set up kubectl to use the token directly
+          kubectl config set-credentials eks-token --token=$TOKEN
+          kubectl config set-context --current --user=eks-token
 
       - name: Verify Kubernetes connection
         run: |
@@ -86,6 +101,6 @@ jobs:
             -n production
 
 
-  
+
 
 
