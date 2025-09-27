@@ -45,7 +45,7 @@ jobs:
         run: aws eks list-clusters --region ap-south-1
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name 5cluster4 --region ap-south-1
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1
         continue-on-error: true
 
       - name: Configure kubeconfig directly
