@@ -17,7 +17,9 @@ ingress:
   path: /webapp-prod # Unique path for production
   hostnames:
     - webapp.local
-  annotations: {}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 resources:
   requests:
     memory: "128Mi"
