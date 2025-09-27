@@ -13,10 +13,9 @@ service:
 # Simple ingress config without domain
 ingress:
   enabled: true
-  hostnames: [] # No hostnames - will use the default rule with no host
-  path: /
-  annotations:
-    kubernetes.io/ingress.class: nginx
+  className: nginx
+  path: /webapp-dev # Unique path for development
+  annotations: {}
 resources:
   requests:
     memory: "64Mi"

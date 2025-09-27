@@ -3,18 +3,19 @@ kind: Ingress
 metadata:
   name: {{ .Values.deploymentName }}-ingress
   namespace: {{ .Values.namespace }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
+  ingressClassName: {{ .Values.ingress.className | default "nginx" }}
   rules:
   {{- if .Values.ingress.hostnames }}
   {{- range .Values.ingress.hostnames }}
   - host: {{ . }}
     http:
       paths:
-      - path: {{ $.Values.ingress.path | default "/" }}
+      - path: {{ $.Values.ingress.path | default (print "/" $.Release.Name) }}
         pathType: Prefix
         backend:
           service:
@@ -23,10 +24,10 @@ spec:
               number: {{ $.Values.service.port }}
   {{- end }}
   {{- else }}
-  # Default rule with no host - this will match any hostname
+  # Default rule with no host but unique path
   - http:
       paths:
-      - path: {{ .Values.ingress.path | default "/" }}
+      - path: {{ .Values.ingress.path | default (print "/" .Release.Name) }}
         pathType: Prefix
         backend:
           service:
