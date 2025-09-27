@@ -26,3 +26,10 @@ resources:
   limits:
     memory: "128Mi"
     cpu: "100m"
+env:
+  - name: PUBLIC_URL
+    value: "/webapp-dev" # This is critical for React apps
+  - name: REACT_APP_BASE_PATH
+    value: "/webapp-dev"
+  - name: NODE_ENV
+    value: "production" # Ensures optimized asset loading

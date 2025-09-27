@@ -15,12 +15,15 @@ spec:
     spec:
       initContainers:
         - name: fix-assets
-          image: alpine:3.14
+          image: busybox
           command: ["/bin/sh", "-c"]
           args:
             - |
-              mkdir -p /usr/share/nginx/html/webapp-prod
-              ln -sf /usr/share/nginx/html/assets /usr/share/nginx/html/webapp-prod/assets
+              # Copy all static assets to the webapp-dev path
+              mkdir -p /usr/share/nginx/html/webapp-dev
+              cp -r /usr/share/nginx/html/* /usr/share/nginx/html/webapp-dev/ || true
+              # Create base index.html redirect
+              echo '<html><head><meta http-equiv="refresh" content="0;URL=/webapp-dev/"></head></html>' > /usr/share/nginx/html/index.html
           volumeMounts:
             - name: html
               mountPath: /usr/share/nginx/html

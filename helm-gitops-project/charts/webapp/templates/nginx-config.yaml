@@ -9,25 +9,27 @@ data:
       listen 80;
       root /usr/share/nginx/html;
       
-      # Handle requests to /webapp-prod
-      location /webapp-prod {
-        alias /usr/share/nginx/html;
+      # Root path redirect to app path if configured
+      location = / {
+        {{- if .Values.ingress.addRootPath }}
+        try_files $uri $uri/ /webapp-dev/index.html;
+        {{- else }}
         try_files $uri $uri/ /index.html;
+        {{- end }}
       }
       
-      # Handle static assets
-      location /assets/ {
-        alias /usr/share/nginx/html/assets/;
-        try_files $uri =404;
+      # Handle the webapp-dev path
+      location /webapp-dev {
+        alias /usr/share/nginx/html/webapp-dev;
+        try_files $uri $uri/ /webapp-dev/index.html;
+        # Enable directory listing for debugging
+        autoindex on;
       }
-      
-      # Rewrite /webapp-prod/assets to /assets
-      location /webapp-prod/assets/ {
-        alias /usr/share/nginx/html/assets/;
-      }
-      
-      # Default location
-      location / {
-        try_files $uri $uri/ /index.html;
+
+      # Handle asset files with proper headers
+      location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000";
+        try_files $uri /webapp-dev$uri =404;
       }
     }
