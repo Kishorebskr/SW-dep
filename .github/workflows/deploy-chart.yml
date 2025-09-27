@@ -32,7 +32,7 @@ jobs:
           aws-region: ap-south-1
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name uscluster --region ap-south-1
+        run: aws eks update-kubeconfig --name 5cluster4 --region ap-south-1
 
       - name: Verify Kubernetes connection
         run: kubectl get nodes
