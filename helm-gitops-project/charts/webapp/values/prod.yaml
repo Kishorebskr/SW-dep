@@ -29,12 +29,11 @@ resources:
   limits:
     memory: "256Mi"
     cpu: "200m"
-env:
-  - name: PUBLIC_URL
-    value: "/webapp-prod"
-  - name: REACT_APP_BASE_PATH
-    value: "/webapp-prod"
-  - name: DEBUG
-    value: "true"
-  - name: NODE_ENV
-    value: "production"
+# Remove these problematic environment variables
+
+env: []
+# If you need specific environment variables, add only the essential ones:
+
+# env:
+#   - name: PORT
+#     value: "80"
