@@ -30,6 +30,6 @@ resources:
     cpu: "200m"
 env:
   - name: PUBLIC_URL
-    value: "" # Try with empty value instead of /webapp-prod
+    value: "/webapp-prod"
   - name: REACT_APP_BASE_PATH
-    value: /webapp-prod
+    value: "/webapp-prod"

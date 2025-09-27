@@ -19,11 +19,14 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              # Copy all static assets to the webapp-dev path
-              mkdir -p /usr/share/nginx/html/webapp-dev
-              cp -r /usr/share/nginx/html/* /usr/share/nginx/html/webapp-dev/ || true
-              # Create base index.html redirect
-              echo '<html><head><meta http-equiv="refresh" content="0;URL=/webapp-dev/"></head></html>' > /usr/share/nginx/html/index.html
+              # Create webapp-prod directory
+              mkdir -p /usr/share/nginx/html/webapp-prod
+              
+              # Copy ALL content to the webapp-prod directory
+              cp -r /usr/share/nginx/html/* /usr/share/nginx/html/webapp-prod/ 2>/dev/null || true
+              
+              # Create redirect from root
+              echo '<html><head><meta http-equiv="refresh" content="0;URL=/webapp-prod/"></head></html>' > /usr/share/nginx/html/index.html
           volumeMounts:
             - name: html
               mountPath: /usr/share/nginx/html
