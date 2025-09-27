@@ -117,6 +117,11 @@ jobs:
             echo "✅ GitHub IAM user already exists in aws-auth."
           fi
 
+          echo "🔧 Adding role mapping to aws-auth ConfigMap..."
+          yq eval ".data.mapRoles += \"- rolearn: arn:aws:iam::222964728025:role/GitHubActions-EKS-Deploy-Role\n  username: github-actions\n  groups:\n    - system:masters\n\"" -i aws-auth.yaml
+          kubectl apply -f aws-auth.yaml -n kube-system
+          echo "✅ Role mapping added successfully."
+
       # ----------------------------
       # 8. Install Helm
       # ----------------------------

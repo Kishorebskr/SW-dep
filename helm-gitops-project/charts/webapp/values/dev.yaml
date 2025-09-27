@@ -11,6 +11,7 @@ service:
   type: ClusterIP
   port: 80
 # Simple ingress config without domain
+
 ingress:
   enabled: true
   className: nginx
