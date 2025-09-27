@@ -48,26 +48,65 @@ jobs:
           sudo ./aws/install --update
           aws --version
 
-      - name: List available EKS clusters
-        run: aws eks list-clusters --region ap-south-1
-
-      - name: Update kubeconfig and verify authentication
+      - name: Install AWS IAM Authenticator
         run: |
-          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1
+          curl -Lo aws-iam-authenticator https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/v0.6.11/aws-iam-authenticator_0.6.11_linux_amd64
+          chmod +x ./aws-iam-authenticator
+          sudo mv aws-iam-authenticator /usr/local/bin/
+          aws-iam-authenticator version
+      
+      - name: Configure kubeconfig using AWS IAM Authenticator
+        run: |
+          # Create a basic kubeconfig
+          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
+          REGION="ap-south-1"
           
-          # Verify AWS identity being used
-          aws sts get-caller-identity
+          # Get cluster endpoint
+          ENDPOINT=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.endpoint" --output text)
           
-          # Create token file manually
-          TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 | jq -r '.status.token')
-          echo "Using token for authentication"
+          # Get certificate authority data
+          CA_DATA=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.certificateAuthority.data" --output text)
           
-          # Set up kubectl to use the token directly
-          kubectl config set-credentials eks-token --token=$TOKEN
-          kubectl config set-context --current --user=eks-token
+          # Create kubeconfig file
+          cat > kubeconfig << EOF
+          apiVersion: v1
+          clusters:
+          - cluster:
+              server: ${ENDPOINT}
+              certificate-authority-data: ${CA_DATA}
+            name: ${CLUSTER_NAME}
+          contexts:
+          - context:
+              cluster: ${CLUSTER_NAME}
+              user: aws-iam-authenticator
+            name: ${CLUSTER_NAME}
+          current-context: ${CLUSTER_NAME}
+          kind: Config
+          preferences: {}
+          users:
+          - name: aws-iam-authenticator
+            user:
+              exec:
+                apiVersion: client.authentication.k8s.io/v1beta1
+                command: aws-iam-authenticator
+                args:
+                  - "token"
+                  - "-i"
+                  - "${CLUSTER_NAME}"
+                  - "--region"
+                  - "${REGION}"
+          EOF
+          
+          # Export kubeconfig
+          export KUBECONFIG=$(pwd)/kubeconfig
+          echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
+          
+          # Display kubectl version to verify installation
+          kubectl version --client
 
       - name: Verify Kubernetes connection
         run: |
+          echo "Using kubeconfig at $KUBECONFIG"
           kubectl config view
           kubectl get nodes
 
