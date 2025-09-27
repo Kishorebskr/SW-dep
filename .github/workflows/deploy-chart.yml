@@ -48,29 +48,34 @@ jobs:
           sudo ./aws/install --update
           aws --version
           
-      - name: Install eksctl
+      - name: Verify AWS connectivity and permissions
         run: |
-          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-          sudo mv /tmp/eksctl /usr/local/bin
-          eksctl version
+          # Show caller identity for debugging
+          echo "Current AWS identity:"
+          aws sts get-caller-identity
           
-      - name: Configure kubeconfig with eksctl
+          # List clusters to verify access
+          echo "Available EKS clusters:"
+          aws eks list-clusters --region ap-south-1
+          
+          # Verify specific cluster exists
+          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
+          echo "Checking cluster $CLUSTER_NAME exists:"
+          aws eks describe-cluster --name $CLUSTER_NAME --region ap-south-1 --query "cluster.status"
+
+      - name: Configure kubectl with AWS EKS
         run: |
           CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
           REGION="ap-south-1"
           
-          # Show caller identity for debugging
-          aws sts get-caller-identity
+          # Use aws cli directly to configure kubectl
+          aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION
           
-          # List clusters to verify access
-          aws eks list-clusters --region $REGION
+          # Verify kubeconfig was created properly
+          ls -la ~/.kube/
           
-          # Create kubeconfig using eksctl
-          eksctl utils write-kubeconfig --cluster=$CLUSTER_NAME --region=$REGION --auto-kubeconfig
-          
-          # Export kubeconfig
-          export KUBECONFIG=~/.kube/eksctl/clusters/$CLUSTER_NAME
-          echo "KUBECONFIG=~/.kube/eksctl/clusters/$CLUSTER_NAME" >> $GITHUB_ENV
+          # Export kubeconfig path
+          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
           
           # Display kubectl version to verify installation
           kubectl version --client
@@ -78,7 +83,8 @@ jobs:
       - name: Verify Kubernetes connection
         run: |
           echo "Using kubeconfig at $KUBECONFIG"
-          kubectl config view
+          kubectl config view --minify
+          kubectl cluster-info
           kubectl get nodes
 
       - name: Create namespaces
