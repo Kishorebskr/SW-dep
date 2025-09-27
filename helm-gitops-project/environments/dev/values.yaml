@@ -13,13 +13,20 @@ image:
   tag: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
 service:
   name: http
-  type: LoadBalancer
+  type: ClusterIP # Change to ClusterIP when using Ingress
   port: 80
   targetPort: 80
-# Ingress is disabled for this environment
+# Ingress is enabled for dev.
 
+# You will need an Ingress controller in your cluster.
 ingress:
-  enabled: false
+  enabled: true
+  className: "nginx" # Specify your Ingress class, e.g., "nginx", "traefik"
+  hosts:
+    - host: my-web-app-dev.local # A placeholder hostname.
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
 resources:
   limits:
     cpu: 100m
