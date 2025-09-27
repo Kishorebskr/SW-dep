@@ -1,29 +1,29 @@
-deploymentName: my-web-app
+# Values for the 'prod' environment
+deploymentName: my-web-app-prod
 namespace: prod
-port: 80
-# Values for the 'dev' environment
-
-app:
-  name: my-web-app-dev
+replicaCount: 3
 image:
-  # This is the repository path.
-  repository: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
-  # This is the tag. Your workflow will update this.
+  # For production, you should use a different, more stable ECR repository
+  repository: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-prod"
+  # This tag will be updated by your CI/CD workflow
 
   tag: "latest"
 service:
-  name: http
-  type: LoadBalancer
+  type: ClusterIP # Use ClusterIP when Ingress is enabled
   port: 80
-  targetPort: 80
-# Ingress is disabled for this environment
+# Ingress is enabled for prod without a specific domain.
 
 ingress:
-  enabled: false
+  enabled: true
+  className: "nginx" # Specify your Ingress class
+  hosts:
+    - paths: # No 'host' is defined, rule will apply to the Ingress controller's IP
+        - path: /
+          pathType: ImplementationSpecific
 resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: "1Gi"
