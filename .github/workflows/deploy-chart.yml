@@ -17,7 +17,7 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v1
         with:
-          version: '3.8.0'  # Specify a version that supports --create-namespace
+          version: '3.8.0'
 
       - name: Set up Kubernetes
         uses: azure/setup-kubectl@v1
@@ -56,11 +56,11 @@ jobs:
       - name: Deploy Helm Chart to Development
         if: github.ref == 'refs/heads/dev'
         run: |
-          helm upgrade --install webapp ./charts/webapp --values ./charts/webapp/values/dev.yaml -n dev
+          helm upgrade --install webapp ./helm-gitops-project/charts/webapp --values ./helm-gitops-project/charts/webapp/values/dev.yaml -n dev
 
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
         run: |
-          helm upgrade --install webapp ./charts/webapp --values ./charts/webapp/values/prod.yaml -n production
+          helm upgrade --install webapp ./helm-gitops-project/charts/webapp --values ./helm-gitops-project/charts/webapp/values/prod.yaml -n production
 
 
