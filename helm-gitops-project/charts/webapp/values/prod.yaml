@@ -18,7 +18,8 @@ ingress:
   hostnames:
     - webapp.local
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    # Don't rewrite - this often breaks React apps
+    # nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 resources:
   requests:

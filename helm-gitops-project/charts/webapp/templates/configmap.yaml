@@ -8,3 +8,5 @@ data:
   APP_ENV: {{ .Values.environment | default "development" }}
   APP_PORT: "{{ .Values.port }}"
   APP_HOST: "{{ .Values.ingress.hostnames | first | default "localhost" }}"
+
+
