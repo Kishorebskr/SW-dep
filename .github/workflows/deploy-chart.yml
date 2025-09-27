@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       imageRepo:
-        description: "Docker image repository"
+        description: 'Docker image repository'
         required: false
-        default: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
+        default: '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev'
       imageTag:
-        description: "Docker image tag"
+        description: 'Docker image tag'
         required: false
-        default: "latest"
+        default: 'latest'
   push:
     branches:
       - main
@@ -21,168 +21,158 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ----------------------------
-      # 1. Checkout repository
-      # ----------------------------
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
 
-      # ----------------------------
-      # 2. Install prerequisites
-      # ----------------------------
-      - name: Install CLI tools
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y jq unzip curl
-          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
-          sudo chmod +x /usr/local/bin/yq
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: '3.8.0'
 
-      # ----------------------------
-      # 3. Install AWS CLI v2
-      # ----------------------------
-      - name: Install AWS CLI v2
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip -q awscliv2.zip
-          sudo ./aws/install --update
-          aws --version
+      - name: Set up Kubernetes
+        uses: azure/setup-kubectl@v1
+        with:
+          version: 'latest'
 
-      # ----------------------------
-      # 4. Configure AWS credentials
-      # ----------------------------
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      # ----------------------------
-      # 5. Verify AWS identity and EKS access
-      # ----------------------------
-      - name: Verify AWS identity and EKS cluster
+      - name: Install AWS CLI v2
         run: |
-          echo "🔍 Checking AWS Identity..."
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --update
+          aws --version
+          
+      - name: Verify AWS connectivity and permissions
+        run: |
+          # Show caller identity for debugging
+          echo "Current AWS identity:"
           aws sts get-caller-identity
           
-          echo "🔍 Listing available EKS clusters..."
+          # List clusters to verify access
+          echo "Available EKS clusters:"
           aws eks list-clusters --region ap-south-1
           
-          echo "🔍 Describing cluster..."
-          aws eks describe-cluster --name "${{ secrets.EKS_CLUSTER_NAME }}" --region ap-south-1 --query "cluster.status"
-
-      # ----------------------------
-      # 6. Configure kubectl access for EKS
-      # ----------------------------
-      - name: Configure kubectl for EKS
-        run: |
-          REGION="ap-south-1"
+          # Verify specific cluster exists
           CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
-          
-          echo "🧩 Setting up kubeconfig..."
-          mkdir -p ~/.kube
-          rm -f ~/.kube/config
-          aws eks update-kubeconfig --region "$REGION" --name "$CLUSTER_NAME" --alias eks-github
-          
-          echo "✅ kubeconfig configured successfully."
-          echo "🔍 Cluster info:"
-          kubectl cluster-info
-          echo "🔍 Nodes:"
-          kubectl get nodes || echo "⚠️ Unable to list nodes (check RBAC)."
+          echo "Checking cluster $CLUSTER_NAME exists:"
+          aws eks describe-cluster --name $CLUSTER_NAME --region ap-south-1 --query "cluster.status"
 
-      # ----------------------------
-      # 7. Grant GitHub IAM access to EKS (one-time auto patch)
-      # ----------------------------
-      - name: Grant GitHub IAM access to EKS (one-time auto patch)
+      - name: Configure kubectl with AWS EKS
         run: |
-          echo "🔧 Patching aws-auth ConfigMap to include GitHub IAM user..."
-          AWS_USER_ARN=$(aws sts get-caller-identity --query Arn --output text)
-          echo "Detected GitHub IAM ARN: $AWS_USER_ARN"
+          CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
+          REGION="ap-south-1"
           
-          # This command requires the user who created the cluster to have already mapped the role.
-          # If this fails, it's because the initial permissions to edit aws-auth are missing.
-          if ! kubectl get configmap aws-auth -n kube-system -o yaml > aws-auth.yaml; then
-            echo "❌ Failed to get aws-auth ConfigMap. The IAM user/role '$AWS_USER_ARN' likely lacks initial permissions."
-            echo "Please ensure the user/role that created the EKS cluster has mapped this role in the aws-auth ConfigMap."
-            exit 1
-          fi
+          # Verify AWS identity again
+          echo "Using AWS identity:"
+          aws sts get-caller-identity
+          
+          # Clear any existing kubeconfig completely
+          rm -rf ~/.kube
+          mkdir -p ~/.kube
+          
+          # Get cluster details needed for manual setup
+          echo "Getting cluster endpoint..."
+          ENDPOINT=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.endpoint" --output text)
+          echo "Cluster endpoint: $ENDPOINT"
+          
+          echo "Getting cluster certificate..."
+          CA_DATA=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.certificateAuthority.data" --output text)
+          
+          # Create kubeconfig manually with explicit values
+          cat > ~/.kube/config << EOF
+          apiVersion: v1
+          kind: Config
+          current-context: eks-$CLUSTER_NAME
+          preferences: {}
+          clusters:
+          - cluster:
+              certificate-authority-data: $CA_DATA
+              server: $ENDPOINT
+            name: eks-$CLUSTER_NAME
+          contexts:
+          - context:
+              cluster: eks-$CLUSTER_NAME
+              user: eks-$CLUSTER_NAME
+            name: eks-$CLUSTER_NAME
+          users:
+          - name: eks-$CLUSTER_NAME
+            user:
+              exec:
+                apiVersion: client.authentication.k8s.io/v1alpha1
+                command: aws
+                args:
+                  - "eks"
+                  - "get-token"
+                  - "--cluster-name"
+                  - "$CLUSTER_NAME"
+                  - "--region"
+                  - "$REGION"
+          EOF
+          
+          # Set permissions on kubeconfig
+          chmod 600 ~/.kube/config
+          
+          # Export kubeconfig path
+          echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
+          
+          # Verify the kubeconfig file exists and has content
+          echo "Kubeconfig file size: $(wc -l < ~/.kube/config) lines"
+          ls -la ~/.kube/
 
-          if ! grep -q "$AWS_USER_ARN" aws-auth.yaml; then
-            echo "🧩 Adding missing IAM user mapping..."
-            # Using yq to add the user to mapUsers
-            yq eval ".data.mapUsers += \"- userarn: $AWS_USER_ARN\n  username: github-actions\n  groups:\n    - system:masters\n\"" -i aws-auth.yaml
-            kubectl apply -f aws-auth.yaml -n kube-system
-            echo "✅ GitHub IAM user mapped successfully."
-          else
-            echo "✅ GitHub IAM user already exists in aws-auth."
-          fi
-
-          echo "🔧 Adding role mapping to aws-auth ConfigMap..."
-          yq eval ".data.mapRoles += \"- rolearn: arn:aws:iam::222964728025:role/GitHubActions-EKS-Deploy-Role\n  username: github-actions\n  groups:\n    - system:masters\n\"" -i aws-auth.yaml
-          kubectl apply -f aws-auth.yaml -n kube-system
-          echo "✅ Role mapping added successfully."
-
-      # ----------------------------
-      # 8. Install Helm
-      # ----------------------------
-      - name: Set up Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: "3.14.4"
-
-      # ----------------------------
-      # 9. Verify Kubernetes connectivity
-      # ----------------------------
       - name: Verify Kubernetes connection
         run: |
-          echo "🔍 Current context:"
-          kubectl config current-context
+          echo "Using kubeconfig at $KUBECONFIG"
           
-          echo "🔍 Namespaces available:"
-          kubectl get ns
+          # Display kubeconfig content
+          echo "Kubeconfig content (sanitized):"
+          grep -v "certificate-authority-data\|token" ~/.kube/config || true
+          
+          # Check contexts
+          echo "Available contexts:"
+          kubectl config get-contexts
+          
+          # Try cluster-info directly with token
+          echo "Getting cluster info with direct token..."
+          TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 | jq -r '.status.token')
+          ENDPOINT=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
+          curl -s --header "Authorization: Bearer $TOKEN" --insecure $ENDPOINT/api/v1/namespaces || echo "Failed to connect using token"
 
-      # ----------------------------
-      # 10. Create namespaces (idempotent)
-      # ----------------------------
       - name: Create namespaces
         run: |
           kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
           kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
 
-      # ----------------------------
-      # 11. Deploy Helm Chart to DEV
-      # ----------------------------
       - name: Deploy Helm Chart to Development
         if: github.ref == 'refs/heads/dev'
         run: |
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
           
-          echo "🚀 Deploying to Development environment..."
           helm upgrade --install webapp ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/dev.yaml \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
-            -n dev \
-            --create-namespace
-          
-          echo "✅ Development deployment completed successfully."
+            -n dev
 
-      # ----------------------------
-      # 12. Deploy Helm Chart to PROD
-      # ----------------------------
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
         run: |
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
           
-          echo "🚀 Deploying to Production environment..."
           helm upgrade --install webapp ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/prod.yaml \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
-            -n production \
-            --create-namespace
-          
-          echo "✅ Production deployment completed successfully."
+            -n production
+
+
+
+
+
