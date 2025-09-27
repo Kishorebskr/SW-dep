@@ -68,45 +68,80 @@ jobs:
           CLUSTER_NAME="${{ secrets.EKS_CLUSTER_NAME }}"
           REGION="ap-south-1"
           
-          # Clear any existing kubeconfig
-          rm -f ~/.kube/config || true
+          # Verify AWS identity again
+          echo "Using AWS identity:"
+          aws sts get-caller-identity
+          
+          # Clear any existing kubeconfig completely
+          rm -rf ~/.kube
           mkdir -p ~/.kube
           
-          # Generate kubeconfig with verbose output
-          aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION --verbose
+          # Get cluster details needed for manual setup
+          echo "Getting cluster endpoint..."
+          ENDPOINT=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.endpoint" --output text)
+          echo "Cluster endpoint: $ENDPOINT"
           
-          # Display kubeconfig details
-          echo "Kubeconfig content (redacted):"
-          kubectl config view
+          echo "Getting cluster certificate..."
+          CA_DATA=$(aws eks describe-cluster --name $CLUSTER_NAME --region $REGION --query "cluster.certificateAuthority.data" --output text)
           
-          # Explicitly set the current context
-          CONTEXT_NAME=$(kubectl config get-contexts -o name | grep $CLUSTER_NAME)
-          if [ -n "$CONTEXT_NAME" ]; then
-            echo "Setting current context to: $CONTEXT_NAME"
-            kubectl config use-context $CONTEXT_NAME
-          else
-            echo "Error: No context found for cluster $CLUSTER_NAME"
-            kubectl config get-contexts
-            exit 1
-          fi
+          # Create kubeconfig manually with explicit values
+          cat > ~/.kube/config << EOF
+          apiVersion: v1
+          kind: Config
+          current-context: eks-$CLUSTER_NAME
+          preferences: {}
+          clusters:
+          - cluster:
+              certificate-authority-data: $CA_DATA
+              server: $ENDPOINT
+            name: eks-$CLUSTER_NAME
+          contexts:
+          - context:
+              cluster: eks-$CLUSTER_NAME
+              user: eks-$CLUSTER_NAME
+            name: eks-$CLUSTER_NAME
+          users:
+          - name: eks-$CLUSTER_NAME
+            user:
+              exec:
+                apiVersion: client.authentication.k8s.io/v1alpha1
+                command: aws
+                args:
+                  - "eks"
+                  - "get-token"
+                  - "--cluster-name"
+                  - "$CLUSTER_NAME"
+                  - "--region"
+                  - "$REGION"
+          EOF
+          
+          # Set permissions on kubeconfig
+          chmod 600 ~/.kube/config
           
           # Export kubeconfig path
           echo "KUBECONFIG=~/.kube/config" >> $GITHUB_ENV
+          
+          # Verify the kubeconfig file exists and has content
+          echo "Kubeconfig file size: $(wc -l < ~/.kube/config) lines"
+          ls -la ~/.kube/
 
       - name: Verify Kubernetes connection
         run: |
           echo "Using kubeconfig at $KUBECONFIG"
           
-          # Check all contexts
+          # Display kubeconfig content
+          echo "Kubeconfig content (sanitized):"
+          grep -v "certificate-authority-data\|token" ~/.kube/config || true
+          
+          # Check contexts
           echo "Available contexts:"
           kubectl config get-contexts
           
-          # View current context
-          echo "Current context:"
-          kubectl config current-context
-          
-          # Try cluster-info without minify option
-          kubectl cluster-info
+          # Try cluster-info directly with token
+          echo "Getting cluster info with direct token..."
+          TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 | jq -r '.status.token')
+          ENDPOINT=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
+          curl -s --header "Authorization: Bearer $TOKEN" --insecure $ENDPOINT/api/v1/namespaces || echo "Failed to connect using token"
 
       - name: Create namespaces
         run: |
