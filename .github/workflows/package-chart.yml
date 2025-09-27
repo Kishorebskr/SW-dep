@@ -20,10 +20,11 @@ jobs:
 
       - name: Package Helm Chart
         run: |
-          helm package charts/webapp --destination ./charts/webapp/packages
+          mkdir -p ./helm-gitops-project/charts/webapp/packages
+          helm package ./helm-gitops-project/charts/webapp --destination ./helm-gitops-project/charts/webapp/packages
 
       - name: Upload Helm Chart
         uses: actions/upload-artifact@v2
         with:
           name: webapp-chart
-          path: charts/webapp/packages/*.tgz
+          path: ./helm-gitops-project/charts/webapp/packages/*.tgz
