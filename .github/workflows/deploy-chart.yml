@@ -27,18 +27,23 @@ jobs:
       - name: Create kubeconfig
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          # Check if the secret is base64 encoded and decode if needed
+          if [[ $(echo "${{ secrets.KUBE_CONFIG }}" | grep -E '^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$') ]]; then
+            echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+          else
+            echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+          fi
           chmod 600 $HOME/.kube/config
-
+          
       - name: Verify Kubernetes connection
         run: kubectl get nodes
 
       - name: Deploy Helm Chart to Development
         if: github.ref == 'refs/heads/dev'
         run: |
-          helm upgrade --install webapp ./charts/webapp --values ./charts/webapp/values/dev.yaml -n dev
+          helm upgrade --install webapp ./charts/webapp --values ./charts/webapp/values/dev.yaml -n dev --create-namespace
 
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
         run: |
-          helm upgrade --install webapp ./charts/webapp --values ./charts/webapp/values/prod.yaml -n production
+          helm upgrade --install webapp ./charts/webapp --values ./charts/webapp/values/prod.yaml -n production --create-namespace
