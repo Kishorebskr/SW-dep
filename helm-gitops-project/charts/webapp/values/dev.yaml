@@ -16,6 +16,7 @@ ingress:
   className: nginx
   path: /webapp-dev
   annotations: {}
+  addRootPath: true # Only add this to one of your environments (prod or dev)
 resources:
   requests:
     memory: "64Mi"
