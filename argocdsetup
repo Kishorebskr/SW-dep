@@ -22,3 +22,5 @@ kubectl get svc -n argocd
 $ kubectl get secret argocd-initial-admin-secret -n argocd -o yaml
 $ echo WXVpLUg2LWxoWjRkSHFmSA== | base64 --decode   ## password value can change
 
+###
+
