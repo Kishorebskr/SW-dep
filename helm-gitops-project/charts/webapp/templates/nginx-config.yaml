@@ -12,17 +12,17 @@ data:
       
       # Added to help with troubleshooting
       error_log /var/log/nginx/error.log debug;
+      access_log /var/log/nginx/access.log;
       
-      # Root location block - make this the default for all
+      # Root location block
       location / {
         try_files $uri $uri/ /index.html;
       }
       
-      # More permissive block for webapp-prod
-      location ^~ /webapp-prod {
-        root /usr/share/nginx/html;
+      # Handle webapp-prod path with alias instead of root
+      location /webapp-prod/ {
+        alias /usr/share/nginx/html/;
         try_files $uri $uri/ /index.html;
-        # Added debug headers
         add_header X-Debug-Path $uri;
         add_header X-Debug-Host $host;
       }

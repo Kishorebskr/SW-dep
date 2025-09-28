@@ -26,6 +26,18 @@ spec:
               subPath: nginx.conf
           ports:
             - containerPort: {{ .Values.service.port }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
           env:
             - name: ENVIRONMENT
               value: {{ .Values.environment }}
@@ -33,7 +45,12 @@ spec:
               value: "{{ .Values.port }}"
           {{- if .Values.resources }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu | default "200m" }}
+              memory: {{ .Values.resources.limits.memory | default "256Mi" }}
+            requests:
+              cpu: {{ .Values.resources.requests.cpu | default "100m" }}
+              memory: {{ .Values.resources.requests.memory | default "128Mi" }}
           {{- end }}
 
 
