@@ -86,7 +86,7 @@ jobs:
           echo "⚙️ Starting Dev deployment..."
 
           NS="dev"
-          RELEASE="webapp"
+          RELEASE="webapp-dev"
           DEPLOYMENT_NAME="webapp-dev"
           SERVICE_NAME="webapp-dev"
           INGRESS_NAME="webapp-dev-ingress"
@@ -136,7 +136,7 @@ jobs:
           echo "⚙️ Starting Production deployment..."
 
           NS="production"
-          RELEASE="webapp"
+          RELEASE="webapp-prod"
           DEPLOYMENT_NAME="webapp-prod"
           SERVICE_NAME="webapp-prod"
           INGRESS_NAME="webapp-prod-ingress"
