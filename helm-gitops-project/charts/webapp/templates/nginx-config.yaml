@@ -10,8 +10,13 @@ data:
       root /usr/share/nginx/html;
       index index.html index.htm;
       
-      # Very basic configuration - no complex routing
+      # Health checks - simplified
+      location = / {
+        return 200;
+      }
+      
+      # All other paths
       location / {
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/ /index.html;
       }
     }
