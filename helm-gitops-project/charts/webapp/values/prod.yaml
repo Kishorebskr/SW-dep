@@ -28,11 +28,8 @@ resources:
   limits:
     memory: "256Mi"
     cpu: "200m"
-# Remove these problematic environment variables
-
-env: []
 # If you need specific environment variables, add only the essential ones:
 
-# env:
-#   - name: PORT
-#     value: "80"
+env:
+  - name: PORT
+    value: "80"
