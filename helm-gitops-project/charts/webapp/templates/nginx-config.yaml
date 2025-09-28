@@ -10,16 +10,13 @@ data:
       root /usr/share/nginx/html;
       index index.html index.htm;
       
-      # Added to help with troubleshooting
-      error_log /var/log/nginx/error.log debug;
-      access_log /var/log/nginx/access.log;
+      # Health checks - simplified
+      location = / {
+        return 200;
+      }
       
-      # Handle all paths
+      # All other paths
       location / {
-        # Return 200 OK for health checks
-        if ($request_uri = "/") {
-          return 200;
-        }
         try_files $uri $uri/ /index.html;
       }
     }

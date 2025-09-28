@@ -30,13 +30,14 @@ spec:
             httpGet:
               path: /
               port: {{ .Values.service.port }}
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30  # Give more time for container to start
             periodSeconds: 10
+            failureThreshold: 6      # Allow more failures before marking not ready
           livenessProbe:
             httpGet:
               path: /
               port: {{ .Values.service.port }}
-            initialDelaySeconds: 15
+            initialDelaySeconds: 60  # Give plenty of time before checking liveness
             periodSeconds: 20
           env:
             - name: ENVIRONMENT
