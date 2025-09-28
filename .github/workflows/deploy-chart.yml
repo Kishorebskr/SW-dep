@@ -179,13 +179,22 @@ jobs:
             kubectl -n $NS label ingress $INGRESS_NAME app.kubernetes.io/managed-by=Helm --overwrite
           fi
           
-          # 🧩 Adopt ConfigMap
+          # 🧩 Adopt nginx ConfigMap
           if kubectl get configmap $RELEASE-nginx-config -n $NS >/dev/null 2>&1; then
             echo "🔄 Adopting existing configmap $RELEASE-nginx-config..."
             kubectl -n $NS annotate configmap $RELEASE-nginx-config \
               meta.helm.sh/release-name=$RELEASE \
               meta.helm.sh/release-namespace=$NS --overwrite
             kubectl -n $NS label configmap $RELEASE-nginx-config app.kubernetes.io/managed-by=Helm --overwrite
+          fi
+          
+          # 🧩 Adopt app ConfigMap
+          if kubectl get configmap $RELEASE-config -n $NS >/dev/null 2>&1; then
+            echo "🔄 Adopting existing configmap $RELEASE-config..."
+            kubectl -n $NS annotate configmap $RELEASE-config \
+              meta.helm.sh/release-name=$RELEASE \
+              meta.helm.sh/release-namespace=$NS --overwrite
+            kubectl -n $NS label configmap $RELEASE-config app.kubernetes.io/managed-by=Helm --overwrite
           fi
 
           echo "🚀 Running Helm upgrade/install for Production..."
