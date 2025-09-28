@@ -214,3 +214,6 @@ jobs:
             --set image.repository=${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }} \
             --set image.tag=${{ github.event.inputs.imageTag || 'latest' }} \
             -n $NS
+
+
+            
