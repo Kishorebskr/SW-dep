@@ -4,7 +4,7 @@ environment: production
 port: 80
 replicaCount: 2
 image:
-  repository: prakhar1989/flaskapp
+  repository: nginx
   tag: latest
   pullPolicy: Always
 service:
