@@ -10,8 +10,12 @@ data:
       root /usr/share/nginx/html;
       index index.html index.htm;
       
-      # Very basic configuration - no complex routing
       location / {
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/ /index.html;
+      }
+      
+      # Handle all paths to make SPA routing work
+      location ~ ^/webapp-prod(/|$)(.*) {
+        try_files $uri $uri/ /index.html;
       }
     }
