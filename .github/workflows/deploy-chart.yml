@@ -14,21 +14,28 @@ on:
   push:
     branches:
       - main
+      - dev
 
 jobs:
   deploy:
     runs-on: ubuntu-22.04
+
+    # 🧠 Dynamically choose environment based on branch
     strategy:
       matrix:
-        env:
-          - name: dev
+        include:
+          - branch: dev
+            name: dev
             release: webapp-dev
             namespace: dev
             valuesFile: charts/webapp/values/dev.yaml
-          - name: prod
+          - branch: main
+            name: prod
             release: webapp-prod
             namespace: production
             valuesFile: charts/webapp/values/prod.yaml
+
+    if: github.ref == 'refs/heads/' + matrix.branch
 
     steps:
       # 🧾 Checkout code
@@ -84,14 +91,14 @@ jobs:
       # 🏗️ Create namespace if not exists
       - name: Ensure Namespace Exists
         run: |
-          kubectl create namespace ${{ matrix.env.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace ${{ matrix.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      # 🧩 Adopt existing Kubernetes resources (for zero downtime)
+      # 🧩 Adopt existing resources (zero downtime)
       - name: Adopt Existing Resources
         run: |
-          echo "🔄 Adopting existing resources for ${{ matrix.env.release }}..."
-          NS=${{ matrix.env.namespace }}
-          RELEASE=${{ matrix.env.release }}
+          echo "🔄 Adopting existing resources for ${{ matrix.release }}..."
+          NS=${{ matrix.namespace }}
+          RELEASE=${{ matrix.release }}
           for TYPE in deployment svc ingress configmap; do
             for NAME in $(kubectl get $TYPE -n $NS --no-headers -o custom-columns=":metadata.name" | grep $RELEASE || true); do
               echo "🔄 Adopting $TYPE $NAME ..."
@@ -101,22 +108,22 @@ jobs:
           done
 
       # 🚀 Deploy Helm chart
-      - name: Deploy Helm Chart — ${{ matrix.env.name }}
+      - name: Deploy Helm Chart — ${{ matrix.name }}
         working-directory: ./helm-gitops-project
         run: |
-          echo "🚀 Deploying ${{ matrix.env.release }} to namespace ${{ matrix.env.namespace }} ..."
-          helm upgrade --install ${{ matrix.env.release }} ./charts/webapp \
-            --values ${{ matrix.env.valuesFile }} \
+          echo "🚀 Deploying ${{ matrix.release }} to namespace ${{ matrix.namespace }} ..."
+          helm upgrade --install ${{ matrix.release }} ./charts/webapp \
+            --values ${{ matrix.valuesFile }} \
             --set image.repository=${{ github.event.inputs.imageRepo }} \
             --set image.tag=${{ github.event.inputs.imageTag }} \
-            -n ${{ matrix.env.namespace }} \
+            -n ${{ matrix.namespace }} \
             --atomic --timeout 10m0s --wait
 
       # ✅ Post-deploy verification
-      - name: Verify Deployment — ${{ matrix.env.name }}
+      - name: Verify Deployment — ${{ matrix.name }}
         run: |
-          NS=${{ matrix.env.namespace }}
-          RELEASE=${{ matrix.env.release }}
+          NS=${{ matrix.namespace }}
+          RELEASE=${{ matrix.release }}
           echo "🔎 Checking resources in namespace $NS ..."
           kubectl get all -n $NS | grep $RELEASE || true
           echo "✅ Waiting for rollout..."
