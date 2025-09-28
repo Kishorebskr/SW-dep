@@ -19,8 +19,8 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ $.Values.deploymentName }}
-            port: 
+            name: {{ include "webapp.fullname" . }}
+            port:
               number: {{ $.Values.service.port }}
   {{- end }}
   {{- else }}
@@ -31,7 +31,20 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ .Values.deploymentName }}
-            port: 
+            name: {{ include "webapp.fullname" . }}
+            port:
               number: {{ .Values.service.port }}
   {{- end }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "webapp.fullname" . }}
+  namespace: {{ .Values.namespace }}
+spec:
+  protocol: TCP
+  name: http
+  selector:
+    app: {{ .Values.deploymentName }}
