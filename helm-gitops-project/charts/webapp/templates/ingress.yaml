@@ -36,16 +36,3 @@ spec:
               number: {{ .Values.service.port }}
   {{- end }}
 {{- end }}
-
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "webapp.fullname" . }}
-  namespace: {{ .Values.namespace }}
-spec:
-  protocol: TCP
-  name: http
-  selector:
-    app: {{ .Values.deploymentName }}
