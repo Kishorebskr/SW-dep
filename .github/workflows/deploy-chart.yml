@@ -24,11 +24,11 @@ jobs:
           - name: dev
             release: webapp-dev
             namespace: dev
-            valuesFile: ./helm-gitops-project/charts/webapp/values/dev.yaml
+            valuesFile: charts/webapp/values/dev.yaml
           - name: prod
             release: webapp-prod
             namespace: production
-            valuesFile: ./helm-gitops-project/charts/webapp/values/prod.yaml
+            valuesFile: charts/webapp/values/prod.yaml
 
     steps:
       # 🧾 Checkout code
