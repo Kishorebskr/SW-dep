@@ -16,7 +16,8 @@ ingress:
   enabled: true
   className: nginx
   path: /webapp-prod
-  annotations: {}
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 resources:
   requests:
     memory: "128Mi"
