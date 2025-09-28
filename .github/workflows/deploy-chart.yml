@@ -93,7 +93,7 @@ jobs:
 
       - name: Verify Kubernetes connection
         run: |
-          kubectl get-contexts
+          kubectl config get-contexts
           kubectl cluster-info
           kubectl get ns
 
