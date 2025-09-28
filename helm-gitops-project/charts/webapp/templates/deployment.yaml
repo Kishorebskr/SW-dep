@@ -1,49 +1,55 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.deploymentName }}
-  namespace: {{ .Values.namespace }}
+  name: {{ include "webapp.fullname" . }}
+  namespace: {{ .Values.namespace | default .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "webapp.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app: {{ .Values.deploymentName | default (include "webapp.name" .) }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   selector:
     matchLabels:
-      app: {{ .Values.deploymentName }}
+      app: {{ .Values.deploymentName | default (include "webapp.name" .) }}
   template:
     metadata:
       labels:
-        app: {{ .Values.deploymentName }}
+        app: {{ .Values.deploymentName | default (include "webapp.name" .) }}
+        app.kubernetes.io/name: {{ include "webapp.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       volumes:
         - name: nginx-config
           configMap:
             name: {{ .Release.Name }}-nginx-config
       containers:
-        - name: {{ .Values.deploymentName }}
+        - name: {{ .Values.deploymentName | default (include "webapp.name" .) }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d/default.conf
               subPath: nginx.conf
           ports:
-            - containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.service.port | default 80 }}
           readinessProbe:
             httpGet:
               path: /
-              port: {{ .Values.service.port }}
-            initialDelaySeconds: 30  # Give more time for container to start
+              port: {{ .Values.service.port | default 80 }}
+            initialDelaySeconds: 30
             periodSeconds: 10
-            failureThreshold: 6      # Allow more failures before marking not ready
+            failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /
-              port: {{ .Values.service.port }}
-            initialDelaySeconds: 60  # Give plenty of time before checking liveness
+              port: {{ .Values.service.port | default 80 }}
+            initialDelaySeconds: 60
             periodSeconds: 20
           env:
             - name: ENVIRONMENT
-              value: {{ .Values.environment }}
+              value: {{ .Values.environment | default "production" }}
             - name: PORT
-              value: "{{ .Values.port }}"
+              value: "{{ .Values.service.port | default 80 }}"
           {{- if .Values.resources }}
           resources:
             limits:
@@ -53,5 +59,3 @@ spec:
               cpu: {{ .Values.resources.requests.cpu | default "100m" }}
               memory: {{ .Values.resources.requests.memory | default "128Mi" }}
           {{- end }}
-
-
