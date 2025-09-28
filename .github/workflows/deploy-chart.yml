@@ -1,44 +1,54 @@
-name: Deploy Helm Chart (Token Only - Zero Downtime)
+name: 🧩 Helm Chart Deployment (Dev + Prod) — Zero Downtime
 
 on:
   workflow_dispatch:
     inputs:
       imageRepo:
-        description: 'Docker image repository'
+        description: "Docker image repository (ECR)"
         required: false
-        default: '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev'
+        default: "990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev"
       imageTag:
-        description: 'Docker image tag'
+        description: "Docker image tag"
         required: false
-        default: 'latest'
+        default: "latest"
   push:
     branches:
       - main
 
 jobs:
-  deploy-dev:
-    name: Deploy to Dev
+  deploy:
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        env:
+          - name: dev
+            release: webapp-dev
+            namespace: dev
+            valuesFile: ./helm-gitops-project/charts/webapp/values/dev.yaml
+          - name: prod
+            release: webapp-prod
+            namespace: production
+            valuesFile: ./helm-gitops-project/charts/webapp/values/prod.yaml
 
     steps:
-      # 🧾 Checkout repository
-      - name: Checkout repository
+      # 🧾 Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # ⚙️ Install Helm
+      # ⚙️ Setup Helm
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
-          version: '3.13.0'
+          version: "3.13.0"
 
-      # ⚙️ Install kubectl
+      # ⚙️ Setup kubectl
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
-          version: 'latest'
+          version: "latest"
 
-      # 🔐 Configure kubeconfig using K8s ServiceAccount token
-      - name: Configure kubectl with ServiceAccount Token
+      # 🔐 Configure kubeconfig using ServiceAccount Token
+      - name: Configure kubeconfig
         env:
           K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
           K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
@@ -65,155 +75,51 @@ jobs:
           EOF
 
       # 🔍 Verify cluster access
-      - name: Verify Kubernetes Connection
+      - name: Verify Cluster Access
         run: |
           echo "🔍 Checking cluster connectivity..."
-          kubectl cluster-info || exit 1
-          kubectl get nodes -o wide || echo "⚠️ No nodes listed - check RBAC permissions"
+          kubectl cluster-info
+          kubectl get nodes -o wide
 
-      # 🏗️ Ensure namespace exists
-      - name: Create Dev Namespace
+      # 🏗️ Create namespace if not exists
+      - name: Ensure Namespace Exists
         run: |
-          kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace ${{ matrix.env.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      # 🚀 Deploy to Dev
-      - name: Deploy Helm Chart to Dev
+      # 🧩 Adopt existing Kubernetes resources (for zero downtime)
+      - name: Adopt Existing Resources
         run: |
-          echo "🚀 Deploying to Dev..."
-          NS="dev"
-          RELEASE="webapp-dev"
-          DEPLOYMENT_NAME="webapp-dev"
-          SERVICE_NAME="webapp-dev"
-          INGRESS_NAME="webapp-dev-ingress"
-          CONFIGMAP1="$RELEASE-config"
-          CONFIGMAP2="$RELEASE-nginx-config"
+          echo "🔄 Adopting existing resources for ${{ matrix.env.release }}..."
+          NS=${{ matrix.env.namespace }}
+          RELEASE=${{ matrix.env.release }}
+          for TYPE in deployment svc ingress configmap; do
+            for NAME in $(kubectl get $TYPE -n $NS --no-headers -o custom-columns=":metadata.name" | grep $RELEASE || true); do
+              echo "🔄 Adopting $TYPE $NAME ..."
+              kubectl -n $NS annotate $TYPE $NAME meta.helm.sh/release-name=$RELEASE meta.helm.sh/release-namespace=$NS --overwrite
+              kubectl -n $NS label $TYPE $NAME app.kubernetes.io/managed-by=Helm --overwrite
+            done
+          done
 
-          # 🧩 Adopt existing resources
-          adopt_resource() {
-            local TYPE=$1
-            local NAME=$2
-            if kubectl get $TYPE $NAME -n $NS >/dev/null 2>&1; then
-              echo "🔄 Adopting existing $TYPE $NAME..."
-              kubectl -n $NS annotate $TYPE $NAME \
-                meta.helm.sh/release-name=$RELEASE \
-                meta.helm.sh/release-namespace=$NS --overwrite
-              kubectl -n $NS label $TYPE $NAME \
-                app.kubernetes.io/managed-by=Helm --overwrite
-            fi
-          }
-
-          adopt_resource deployment $DEPLOYMENT_NAME
-          adopt_resource svc $SERVICE_NAME
-          adopt_resource ingress $INGRESS_NAME
-          adopt_resource configmap $CONFIGMAP1
-          adopt_resource configmap $CONFIGMAP2
-
-          # 🚀 Run Helm Upgrade/Install
-          helm upgrade --install $RELEASE ./helm-gitops-project/charts/webapp \
-            --values ./helm-gitops-project/charts/webapp/values/dev.yaml \
-            --set image.repository=${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }} \
-            --set image.tag=${{ github.event.inputs.imageTag || 'latest' }} \
-            -n $NS
-
-  deploy-prod:
-    name: Deploy to Production
-    runs-on: ubuntu-22.04
-    needs: deploy-dev   # ✅ ensures dev deploy runs first
-
-    steps:
-      # 🧾 Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # ⚙️ Install Helm
-      - name: Set up Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: '3.13.0'
-
-      # ⚙️ Install kubectl
-      - name: Set up Kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: 'latest'
-
-      # 🔐 Configure kubeconfig using K8s ServiceAccount token
-      - name: Configure kubectl with ServiceAccount Token
-        env:
-          K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
-          K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
+      # 🚀 Deploy Helm chart
+      - name: Deploy Helm Chart — ${{ matrix.env.name | upper }}
+        working-directory: ./helm-gitops-project
         run: |
-          mkdir -p ~/.kube
-          cat <<EOF > ~/.kube/config
-          apiVersion: v1
-          kind: Config
-          clusters:
-          - cluster:
-              insecure-skip-tls-verify: true
-              server: ${K8S_SERVER}
-            name: eks-cluster
-          contexts:
-          - context:
-              cluster: eks-cluster
-              user: sa-user
-            name: eks-context
-          current-context: eks-context
-          users:
-          - name: sa-user
-            user:
-              token: ${K8S_TOKEN}
-          EOF
+          echo "🚀 Deploying ${{ matrix.env.release }} to namespace ${{ matrix.env.namespace }} ..."
+          helm upgrade --install ${{ matrix.env.release }} ./charts/webapp \
+            --values ${{ matrix.env.valuesFile }} \
+            --set image.repository=${{ github.event.inputs.imageRepo }} \
+            --set image.tag=${{ github.event.inputs.imageTag }} \
+            -n ${{ matrix.env.namespace }} \
+            --atomic --timeout 10m0s --wait
 
-      # 🔍 Verify cluster access
-      - name: Verify Kubernetes Connection
+      # ✅ Post-deploy verification
+      - name: Verify Deployment — ${{ matrix.env.name | upper }}
         run: |
-          echo "🔍 Checking cluster connectivity..."
-          kubectl cluster-info || exit 1
-          kubectl get nodes -o wide || echo "⚠️ No nodes listed - check RBAC permissions"
-
-      # 🏗️ Ensure namespace exists
-      - name: Create Production Namespace
-        run: |
-          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
-
-      # 🚀 Deploy to Production
-      - name: Deploy Helm Chart to Production
-        run: |
-          echo "🚀 Deploying to Production..."
-          NS="production"
-          RELEASE="webapp-prod"
-          DEPLOYMENT_NAME="webapp-prod"
-          SERVICE_NAME="webapp-prod"
-          INGRESS_NAME="webapp-prod-ingress"
-          CONFIGMAP1="$RELEASE-config"
-          CONFIGMAP2="$RELEASE-nginx-config"
-
-          # 🧩 Adopt existing resources
-          adopt_resource() {
-            local TYPE=$1
-            local NAME=$2
-            if kubectl get $TYPE $NAME -n $NS >/dev/null 2>&1; then
-              echo "🔄 Adopting existing $TYPE $NAME..."
-              kubectl -n $NS annotate $TYPE $NAME \
-                meta.helm.sh/release-name=$RELEASE \
-                meta.helm.sh/release-namespace=$NS --overwrite
-              kubectl -n $NS label $TYPE $NAME \
-                app.kubernetes.io/managed-by=Helm --overwrite
-            fi
-          }
-
-          adopt_resource deployment $DEPLOYMENT_NAME
-          adopt_resource svc $SERVICE_NAME
-          adopt_resource ingress $INGRESS_NAME
-          adopt_resource configmap $CONFIGMAP1
-          adopt_resource configmap $CONFIGMAP2
-
-          # 🚀 Run Helm Upgrade/Install
-          helm upgrade --install $RELEASE ./helm-gitops-project/charts/webapp \
-            --values ./helm-gitops-project/charts/webapp/values/prod.yaml \
-            --set image.repository=${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }} \
-            --set image.tag=${{ github.event.inputs.imageTag || 'latest' }} \
-            -n $NS
-
-
-            
+          NS=${{ matrix.env.namespace }}
+          RELEASE=${{ matrix.env.release }}
+          echo "🔎 Checking resources in namespace $NS ..."
+          kubectl get all -n $NS | grep $RELEASE || true
+          echo "✅ Waiting for rollout..."
+          kubectl rollout status deployment/${RELEASE} -n $NS --timeout=180s
+          echo "🌐 Ingress info:"
+          kubectl get ingress -n $NS | grep $RELEASE || true
