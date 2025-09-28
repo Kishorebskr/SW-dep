@@ -14,16 +14,12 @@ data:
       error_log /var/log/nginx/error.log debug;
       access_log /var/log/nginx/access.log;
       
-      # Root location block
+      # Handle all paths
       location / {
+        # Return 200 OK for health checks
+        if ($request_uri = "/") {
+          return 200;
+        }
         try_files $uri $uri/ /index.html;
-      }
-      
-      # Handle webapp-prod path with alias instead of root
-      location /webapp-prod/ {
-        alias /usr/share/nginx/html/;
-        try_files $uri $uri/ /index.html;
-        add_header X-Debug-Path $uri;
-        add_header X-Debug-Host $host;
       }
     }
