@@ -75,6 +75,9 @@ jobs:
       - name: Deploy Helm Chart to Dev
         if: github.ref == 'refs/heads/dev'
         run: |
+          # Delete orphaned service to prevent install conflicts
+          kubectl delete service webapp-dev -n dev --ignore-not-found=true
+
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
           
@@ -87,6 +90,9 @@ jobs:
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
         run: |
+          # Delete orphaned service to prevent install conflicts
+          kubectl delete service webapp-prod -n production --ignore-not-found=true
+
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
           
@@ -96,4 +102,3 @@ jobs:
             --set image.tag=$IMAGE_TAG \
             -n production
 
-            
