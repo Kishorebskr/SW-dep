@@ -34,6 +34,30 @@ jobs:
         with:
           version: 'latest'
 
+      - name: Configure kubectl with Service Account Token
+        run: |
+          mkdir -p $HOME/.kube
+          cat <<EOF > $HOME/.kube/config
+          apiVersion: v1
+          clusters:
+          - cluster:
+              insecure-skip-tls-verify: true
+              server: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
+            name: my-eks-cluster
+          contexts:
+          - context:
+              cluster: my-eks-cluster
+              user: service-account-user
+            name: my-context
+          current-context: my-context
+          kind: Config
+          preferences: {}
+          users:
+          - name: service-account-user
+            user:
+              token: ${{ secrets.K8S_TOKEN }}
+          EOF
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -69,26 +93,14 @@ jobs:
 
       - name: Verify Kubernetes connection
         run: |
-          echo "Using kubeconfig at $KUBECONFIG"
-          
-          # Display kubeconfig content
-          echo "Kubeconfig content (sanitized):"
-          grep -v "certificate-authority-data\|token" ~/.kube/config || true
-          
-          # Check contexts
-          echo "Available contexts:"
-          kubectl config get-contexts
-          
-          # Try cluster-info directly with token
-          echo "Getting cluster info with direct token..."
-          TOKEN=$(aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ap-south-1 | jq -r '.status.token')
-          ENDPOINT=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}')
-          curl -s --header "Authorization: Bearer $TOKEN" --insecure $ENDPOINT/api/v1/namespaces || echo "Failed to connect using token"
+          kubectl get-contexts
+          kubectl cluster-info
+          kubectl get ns
 
       - name: Create namespaces
         run: |
-          kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace dev --dry-run=client -o yaml | kubectl apply --validate=false -f -
+          kubectl create namespace production --dry-run=client -o yaml | kubectl apply --validate=false -f -
 
       - name: Deploy Helm Chart to Development
         if: github.ref == 'refs/heads/dev'
@@ -120,4 +132,3 @@ jobs:
 
 
 
-            
