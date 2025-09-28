@@ -4,7 +4,7 @@ environment: development
 port: 80
 replicaCount: 1
 image:
-  repository: nginx
+  repository: 222964728025.dkr.ecr.us-east-1.amazonaws.com/sw_ecr
   tag: dev
   pullPolicy: Always
 service:
