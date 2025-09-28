@@ -101,7 +101,7 @@ jobs:
           done
 
       # 🚀 Deploy Helm chart
-      - name: Deploy Helm Chart — ${{ matrix.env.name | upper }}
+      - name: Deploy Helm Chart — ${{ matrix.env.name }}
         working-directory: ./helm-gitops-project
         run: |
           echo "🚀 Deploying ${{ matrix.env.release }} to namespace ${{ matrix.env.namespace }} ..."
@@ -113,7 +113,7 @@ jobs:
             --atomic --timeout 10m0s --wait
 
       # ✅ Post-deploy verification
-      - name: Verify Deployment — ${{ matrix.env.name | upper }}
+      - name: Verify Deployment — ${{ matrix.env.name }}
         run: |
           NS=${{ matrix.env.namespace }}
           RELEASE=${{ matrix.env.release }}
