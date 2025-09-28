@@ -3,15 +3,12 @@ kind: Service
 metadata:
   name: {{ include "webapp.fullname" . }}
   namespace: {{ .Values.namespace | default .Release.Namespace }}
-  labels:
-    app.kubernetes.io/name: {{ include "webapp.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   type: {{ .Values.service.type | default "ClusterIP" }}
   ports:
     - port: {{ .Values.service.port | default 80 }}
-      targetPort: {{ .Values.service.targetPort | default "http" }}
+      targetPort: {{ .Values.service.port | default 80 }}
       protocol: TCP
-      name: http
   selector:
-    app: {{ .Values.deploymentName | default (include "webapp.name" .) }}
+    app.kubernetes.io/name: {{ include "webapp.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
