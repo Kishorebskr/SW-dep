@@ -15,4 +15,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: {{ .Values.deploymentName | default (include "webapp.name" .) }}
+    app: {{ .Values.deploymentName }}
