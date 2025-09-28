@@ -21,19 +21,23 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      # 🧾 Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ⚙️ Install Helm
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
           version: '3.13.0'
 
+      # ⚙️ Install kubectl
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
+      # 🔐 Configure kubeconfig using K8s ServiceAccount token
       - name: Configure kubectl with ServiceAccount Token
         env:
           K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
@@ -60,21 +64,51 @@ jobs:
               token: ${K8S_TOKEN}
           EOF
 
+      # 🔍 Verify cluster access
       - name: Verify Kubernetes Connection
         run: |
           echo "🔍 Checking cluster connectivity..."
-          kubectl cluster-info
-          kubectl get nodes -o wide
+          kubectl cluster-info || exit 1
+          kubectl get nodes -o wide || echo "⚠️ No nodes listed - check RBAC permissions"
 
+      # 🏗️ Ensure namespace exists
       - name: Create Dev Namespace
         run: |
           kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
 
+      # 🚀 Deploy to Dev
       - name: Deploy Helm Chart to Dev
         run: |
           echo "🚀 Deploying to Dev..."
           NS="dev"
           RELEASE="webapp-dev"
+          DEPLOYMENT_NAME="webapp-dev"
+          SERVICE_NAME="webapp-dev"
+          INGRESS_NAME="webapp-dev-ingress"
+          CONFIGMAP1="$RELEASE-config"
+          CONFIGMAP2="$RELEASE-nginx-config"
+
+          # 🧩 Adopt existing resources
+          adopt_resource() {
+            local TYPE=$1
+            local NAME=$2
+            if kubectl get $TYPE $NAME -n $NS >/dev/null 2>&1; then
+              echo "🔄 Adopting existing $TYPE $NAME..."
+              kubectl -n $NS annotate $TYPE $NAME \
+                meta.helm.sh/release-name=$RELEASE \
+                meta.helm.sh/release-namespace=$NS --overwrite
+              kubectl -n $NS label $TYPE $NAME \
+                app.kubernetes.io/managed-by=Helm --overwrite
+            fi
+          }
+
+          adopt_resource deployment $DEPLOYMENT_NAME
+          adopt_resource svc $SERVICE_NAME
+          adopt_resource ingress $INGRESS_NAME
+          adopt_resource configmap $CONFIGMAP1
+          adopt_resource configmap $CONFIGMAP2
+
+          # 🚀 Run Helm Upgrade/Install
           helm upgrade --install $RELEASE ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/dev.yaml \
             --set image.repository=${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }} \
@@ -87,19 +121,23 @@ jobs:
     needs: deploy-dev   # ✅ ensures dev deploy runs first
 
     steps:
+      # 🧾 Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ⚙️ Install Helm
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
           version: '3.13.0'
 
+      # ⚙️ Install kubectl
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
+      # 🔐 Configure kubeconfig using K8s ServiceAccount token
       - name: Configure kubectl with ServiceAccount Token
         env:
           K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
@@ -126,21 +164,51 @@ jobs:
               token: ${K8S_TOKEN}
           EOF
 
+      # 🔍 Verify cluster access
       - name: Verify Kubernetes Connection
         run: |
           echo "🔍 Checking cluster connectivity..."
-          kubectl cluster-info
-          kubectl get nodes -o wide
+          kubectl cluster-info || exit 1
+          kubectl get nodes -o wide || echo "⚠️ No nodes listed - check RBAC permissions"
 
+      # 🏗️ Ensure namespace exists
       - name: Create Production Namespace
         run: |
           kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
 
+      # 🚀 Deploy to Production
       - name: Deploy Helm Chart to Production
         run: |
           echo "🚀 Deploying to Production..."
           NS="production"
           RELEASE="webapp-prod"
+          DEPLOYMENT_NAME="webapp-prod"
+          SERVICE_NAME="webapp-prod"
+          INGRESS_NAME="webapp-prod-ingress"
+          CONFIGMAP1="$RELEASE-config"
+          CONFIGMAP2="$RELEASE-nginx-config"
+
+          # 🧩 Adopt existing resources
+          adopt_resource() {
+            local TYPE=$1
+            local NAME=$2
+            if kubectl get $TYPE $NAME -n $NS >/dev/null 2>&1; then
+              echo "🔄 Adopting existing $TYPE $NAME..."
+              kubectl -n $NS annotate $TYPE $NAME \
+                meta.helm.sh/release-name=$RELEASE \
+                meta.helm.sh/release-namespace=$NS --overwrite
+              kubectl -n $NS label $TYPE $NAME \
+                app.kubernetes.io/managed-by=Helm --overwrite
+            fi
+          }
+
+          adopt_resource deployment $DEPLOYMENT_NAME
+          adopt_resource svc $SERVICE_NAME
+          adopt_resource ingress $INGRESS_NAME
+          adopt_resource configmap $CONFIGMAP1
+          adopt_resource configmap $CONFIGMAP2
+
+          # 🚀 Run Helm Upgrade/Install
           helm upgrade --install $RELEASE ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/prod.yaml \
             --set image.repository=${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }} \
