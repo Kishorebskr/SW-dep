@@ -19,7 +19,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ include "webapp.fullname" . }}
+            name: {{ include "webapp.fullname" $ }}
             port:
               number: {{ $.Values.service.port }}
   {{- end }}
@@ -35,6 +35,7 @@ spec:
             port:
               number: {{ .Values.service.port }}
   {{- end }}
+{{- end }}
 
 ---
 
