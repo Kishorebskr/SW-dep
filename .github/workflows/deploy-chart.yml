@@ -95,3 +95,5 @@ jobs:
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
             -n production
+
+            
