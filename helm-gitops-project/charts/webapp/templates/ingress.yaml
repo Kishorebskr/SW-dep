@@ -15,7 +15,7 @@ spec:
   - host: {{ . }}
     http:
       paths:
-      - path: /
+      - path: {{ $.Values.ingress.path | default "/" }}
         pathType: Prefix
         backend:
           service:
@@ -27,7 +27,7 @@ spec:
   # Default rule with no host but unique path
   - http:
       paths:
-      - path: /
+      - path: {{ .Values.ingress.path | default "/" }}
         pathType: Prefix
         backend:
           service:
