@@ -10,22 +10,20 @@ data:
       root /usr/share/nginx/html;
       index index.html index.htm;
       
-      # Root location block for direct root access
+      # Added to help with troubleshooting
+      error_log /var/log/nginx/error.log debug;
+      
+      # Root location block - make this the default for all
       location / {
         try_files $uri $uri/ /index.html;
       }
       
-      # Specific block for /webapp-prod path - simplified for reliability
-      location /webapp-prod {
-        alias /usr/share/nginx/html;
+      # More permissive block for webapp-prod
+      location ^~ /webapp-prod {
+        root /usr/share/nginx/html;
         try_files $uri $uri/ /index.html;
-        index index.html index.htm;
-      }
-      
-      # Handle any sub-paths under /webapp-prod
-      location ~ ^/webapp-prod/(.*)$ {
-        alias /usr/share/nginx/html/$1;
-        try_files $uri $uri/ /index.html;
-        index index.html index.htm;
+        # Added debug headers
+        add_header X-Debug-Path $uri;
+        add_header X-Debug-Host $host;
       }
     }

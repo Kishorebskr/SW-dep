@@ -7,33 +7,18 @@ metadata:
     {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    # Remove rewrite target to see if it's causing issues
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   ingressClassName: {{ .Values.ingress.className | default "nginx" }}
   rules:
-  {{- if .Values.ingress.hostnames }}
-  {{- range .Values.ingress.hostnames }}
-  - host: {{ . }}
-    http:
-      paths:
-      - path: {{ $.Values.ingress.path | default "/" }}
-        pathType: Prefix
-        backend:
-          service:
-            name: {{ include "webapp.fullname" $ }}
-            port:
-              number: {{ $.Values.service.port }}
-  {{- end }}
-  {{- else }}
-  # Default rule with no host but unique path
   - http:
       paths:
-      - path: {{ .Values.ingress.path | default "/webapp-prod(/?)(.*)" }}
+      - path: /
         pathType: Prefix
         backend:
           service:
             name: {{ include "webapp.fullname" . }}
             port:
-              number: {{ .Values.service.port }}
-  {{- end }}
+              number: {{ .Values.service.port | default 80 }}

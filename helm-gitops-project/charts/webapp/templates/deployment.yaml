@@ -13,9 +13,17 @@ spec:
       labels:
         app: {{ .Values.deploymentName }}
     spec:
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ .Release.Name }}-nginx-config
       containers:
         - name: {{ .Values.deploymentName }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
           ports:
             - containerPort: {{ .Values.service.port }}
           env:
