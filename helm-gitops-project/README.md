@@ -38,6 +38,8 @@ helm-gitops-project
 
 ## Features
 
+
+
 - **Configurable Deployment**: The Helm chart allows for configurable deployment names, namespaces, ports, and ingress hostnames.
 - **Environment-Specific Values**: Separate values files for development and production environments enable easy customization.
 - **Automation Scripts**: Scripts are provided to automate the packaging and deployment of the Helm chart, as well as to update values files.
