@@ -11,14 +11,36 @@ on:
         description: "Docker image tag"
         required: false
         default: "latest"
+
   push:
     branches:
-      - test
+      - main
       - dev
 
 jobs:
-  deploy:
+  # --------------------------------------------------------
+  # 🧱 Deploy to DEV environment when dev branch is pushed
+  # --------------------------------------------------------
+  deploy-dev:
+    if: ${{ github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-22.04
+
+    # 🧠 Dynamically choose environment based on branch
+    strategy:
+      matrix:
+        include:
+          - branch: dev
+            name: dev
+            release: webapp-dev
+            namespace: dev
+            valuesFile: charts/webapp/values/dev.yaml
+          - branch: main
+            name: prod
+            release: webapp-prod
+            namespace: production
+            valuesFile: charts/webapp/values/prod.yaml
+
+    if: github.ref == 'refs/heads/' + matrix.branch
 
     steps:
       - name: Checkout repository
@@ -29,12 +51,14 @@ jobs:
         with:
           version: "3.13.0"
 
-      - name: Install kubectl
+      # ⚙️ Setup kubectl
+      - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: "latest"
 
-      - name: Configure kubectl with ServiceAccount Token
+      # 🔐 Configure kubeconfig using ServiceAccount Token
+      - name: Configure kubeconfig
         env:
           K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
           K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
@@ -65,31 +89,45 @@ jobs:
           kubectl cluster-info
           kubectl get nodes -o wide || true
 
-      - name: Ensure Namespaces Exist
+      # 🏗️ Create namespace if not exists
+      - name: Ensure Namespace Exists
         run: |
-          kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace ${{ matrix.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Helm Lint
-        run: helm lint ./helm-gitops-project/charts/webapp
-
-      - name: Package Helm Chart
-        run: helm package ./helm-gitops-project/charts/webapp --destination ./artifacts
-
-      - name: Deploy to Dev
-        if: github.ref == 'refs/heads/dev'
+      # 🧩 Adopt existing resources (zero downtime)
+      - name: Adopt Existing Resources
         run: |
-          helm upgrade --install webapp-dev ./helm-gitops-project/charts/webapp \
-            --values ./helm-gitops-project/charts/webapp/values/dev.yaml \
+          echo "🔄 Adopting existing resources for ${{ matrix.release }}..."
+          NS=${{ matrix.namespace }}
+          RELEASE=${{ matrix.release }}
+          for TYPE in deployment svc ingress configmap; do
+            for NAME in $(kubectl get $TYPE -n $NS --no-headers -o custom-columns=":metadata.name" | grep $RELEASE || true); do
+              echo "🔄 Adopting $TYPE $NAME ..."
+              kubectl -n $NS annotate $TYPE $NAME meta.helm.sh/release-name=$RELEASE meta.helm.sh/release-namespace=$NS --overwrite
+              kubectl -n $NS label $TYPE $NAME app.kubernetes.io/managed-by=Helm --overwrite
+            done
+          done
+
+      # 🚀 Deploy Helm chart
+      - name: Deploy Helm Chart — ${{ matrix.name }}
+        working-directory: ./helm-gitops-project
+        run: |
+          echo "🚀 Deploying ${{ matrix.release }} to namespace ${{ matrix.namespace }} ..."
+          helm upgrade --install ${{ matrix.release }} ./charts/webapp \
+            --values ${{ matrix.valuesFile }} \
             --set image.repository=${{ github.event.inputs.imageRepo }} \
             --set image.tag=${{ github.event.inputs.imageTag }} \
-            -n dev --create-namespace
+            -n ${{ matrix.namespace }} \
+            --atomic --timeout 10m0s --wait
 
-      - name: Deploy to Production
-        if: github.ref == 'refs/heads/main'
+      # ✅ Post-deploy verification
+      - name: Verify Deployment — ${{ matrix.name }}
         run: |
-          helm upgrade --install webapp-prod ./helm-gitops-project/charts/webapp \
-            --values ./helm-gitops-project/charts/webapp/values/prod.yaml \
-            --set image.repository=${{ github.event.inputs.imageRepo }} \
-            --set image.tag=${{ github.event.inputs.imageTag }} \
-            -n production --create-namespace
+          NS=${{ matrix.namespace }}
+          RELEASE=${{ matrix.release }}
+          echo "🔎 Checking resources in namespace $NS ..."
+          kubectl get all -n $NS | grep $RELEASE || true
+          echo "✅ Waiting for rollout..."
+          kubectl rollout status deployment/${RELEASE} -n $NS --timeout=180s
+          echo "🌐 Ingress info:"
+          kubectl get ingress -n $NS | grep $RELEASE || true
