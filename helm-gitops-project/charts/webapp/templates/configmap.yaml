@@ -4,9 +4,6 @@ metadata:
   name: {{ .Release.Name }}-config
   namespace: {{ .Values.namespace }}
 data:
-  # Configuration data for the web application
   APP_ENV: {{ .Values.environment | default "development" }}
-  APP_PORT: "{{ .Values.port }}"
-  APP_HOST: "{{ .Values.ingress.hostnames | first | default "localhost" }}"
-
-
+  APP_PORT: "{{ .Values.service.port | default 80 }}"
+  APP_HOST: "{{ (first .Values.ingress.hostnames) | default "localhost" }}"
