@@ -1,7 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "webapp.fullname" . }}
+  # Use deploymentName if provided, else fallback to Helm fullname helper
+  name: {{ .Values.deploymentName | default (include "webapp.fullname" .) }}
   namespace: {{ .Values.namespace | default .Release.Namespace }}
   labels:
     app.kubernetes.io/name: {{ include "webapp.name" . }}
