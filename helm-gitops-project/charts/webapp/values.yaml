@@ -4,15 +4,18 @@ namespace: default
 replicaCount: 1
 environment: production
 # Image configuration
+
 image:
   repository: nginx
   tag: latest
   pullPolicy: Always
 # Service configuration
+
 service:
   type: ClusterIP
   port: 80
 # Ingress configuration
+
 ingress:
   enabled: true
   hostnames:
