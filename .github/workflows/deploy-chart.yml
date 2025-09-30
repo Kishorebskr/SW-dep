@@ -13,7 +13,7 @@ on:
         default: "latest"
   push:
     branches:
-      - main
+      - test
       - dev
 
 jobs:
