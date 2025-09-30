@@ -1,8 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "webapp.fullname" . }}-ingress
+  namespace: {{ .Values.namespace | default .Release.Namespace }}
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: {{ .Values.ingress.className | default "nginx" }}
   rules:
-{{- if .Values.ingress.hostnames }}
-{{- range .Values.ingress.hostnames }}
+  {{- if .Values.ingress.hostnames }}
+    {{- range .Values.ingress.hostnames }}
     - host: {{ . | quote }}
       http:
         paths:
@@ -13,8 +21,8 @@ spec:
                 name: {{ include "webapp.fullname" $ }}
                 port:
                   number: {{ $.Values.service.port | default 80 }}
-{{- end }}
-{{- else }}
+    {{- end }}
+  {{- else }}
     - host: ""
       http:
         paths:
@@ -25,4 +33,4 @@ spec:
                 name: {{ include "webapp.fullname" . }}
                 port:
                   number: {{ .Values.service.port | default 80 }}
-{{- end }}
+  {{- end }}
