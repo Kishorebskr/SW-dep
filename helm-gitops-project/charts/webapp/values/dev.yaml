@@ -10,13 +10,16 @@ image:
 service:
   type: ClusterIP
   port: 80
+# Simple ingress config without domain
 
 ingress:
   enabled: true
   className: nginx
   path: /webapp-dev
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+  hostnames:
+    - aee1ef7d347194c1f8b8d38038e9002b-71afeaf5c41d6d41.elb.ap-south-1.amazonaws.com
+  annotations: {}
+  addRootPath: true # Only add this to one of your environments (prod or dev)
 resources:
   requests:
     memory: "64Mi"
@@ -24,6 +27,5 @@ resources:
   limits:
     memory: "128Mi"
     cpu: "100m"
-env:
-  - name: PORT
-    value: "80"
+
+#
