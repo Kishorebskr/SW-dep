@@ -17,7 +17,7 @@ ingress:
   className: nginx
   path: /webapp-dev
   hostnames:
-    - webapp.local
+    - aee1ef7d347194c1f8b8d38038e9002b-71afeaf5c41d6d41.elb.ap-south-1.amazonaws.com
   annotations: {}
   addRootPath: true # Only add this to one of your environments (prod or dev)
 resources:
