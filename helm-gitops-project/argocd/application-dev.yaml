@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: webapp-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/Kishorebskr/SW-dep.git'
+    targetRevision: HEAD
+    path: helm-gitops-project/charts/webapp
+    helm:
+      valueFiles:
+        - values/dev.yaml
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

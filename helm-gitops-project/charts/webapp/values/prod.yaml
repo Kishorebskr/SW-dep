@@ -1,0 +1,32 @@
+deploymentName: webapp-prod
+namespace: production
+environment: production
+port: 80
+replicaCount: 2
+image:
+  repository: 222964728025.dkr.ecr.us-east-1.amazonaws.com/sw_ecr
+  tag: prod
+  pullPolicy: Always
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  path: /webapp-prod
+  hostnames:
+    - webapp-prod.local
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+
+env:
+  - name: PORT
+    value: "80"

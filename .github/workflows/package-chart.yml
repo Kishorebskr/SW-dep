@@ -1,0 +1,37 @@
+name: Package Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.14.4
+
+      - name: Lint Helm Chart
+        run: |
+          set -euo pipefail
+          helm lint ./helm-gitops-project/charts/webapp
+
+      - name: Package Helm Chart
+        run: |
+          set -euo pipefail
+          mkdir -p ./helm-gitops-project/charts/webapp/packages
+          helm package ./helm-gitops-project/charts/webapp --destination ./helm-gitops-project/charts/webapp/packages
+
+      - name: Upload Helm Chart
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapp-chart
+          path: ./helm-gitops-project/charts/webapp/packages/*.tgz
+          retention-days: 7

@@ -1,0 +1,16 @@
+deploymentName: webapp
+namespace: default
+replicaCount: 1
+environment: production
+image:
+  repository: nginx
+  tag: latest
+  pullPolicy: Always
+service:
+  type: ClusterIP
+  port: 80
+ingress:
+  enabled: true
+  hostnames:
+    - webapp.local
+  path: /
