@@ -1,4 +1,4 @@
-## Tech assignment – GitOps-driven Helm Deployment with Terraform & ArgoCD
+### Tech assignment – GitOps-driven Helm Deployment with Terraform & ArgoCD
 
 This repoository demonstrates the end-to-end automation of Kubernetes application deployment on Amazon EKS using **Terraform, Helm, ArgoCD, and GitHub Actions**. It includes Terraform configurations to provision the underlying AWS infrastructure, Helm charts to package and configure the application, ArgoCD manifests to enable GitOps-based deployments, and CI/CD workflows to automate Helm packaging and deployment.
 
