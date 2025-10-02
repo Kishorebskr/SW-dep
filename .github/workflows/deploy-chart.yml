@@ -1,4 +1,4 @@
-name: 🧩 Helm Chart Deployment (Dev + Prod) — Zero Downtime
+name: Helm Chart Deployment (Dev + Prod) — Zero Downtime
 
 on:
   workflow_dispatch:
@@ -22,32 +22,30 @@ env:
   K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
 
 jobs:
-  # --------------------------------------------------------
-  # 🧱 Deploy to DEV environment when dev branch is pushed
-  # --------------------------------------------------------
+  # Deploy to DEV environment when dev branch is pushed
   deploy-dev:
     if: ${{ github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-22.04
-    name: 🚀 Deploy to DEV
+    name: Deploy to DEV
 
     steps:
-      # 🧾 Checkout code
+      # Checkout code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # ⚙️ Setup Helm
+      # Setup Helm
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
           version: "3.13.0"
 
-      # ⚙️ Setup Kubectl
+      # Setup Kubectl
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: "latest"
 
-      # 🔐 Configure kubeconfig
+      # Configure kubeconfig
       - name: Configure kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -71,76 +69,74 @@ jobs:
               token: ${K8S_TOKEN}
           EOF
 
-      # 🔍 Verify cluster access
+      # Verify cluster access
       - name: Verify Cluster Access
         run: |
-          echo "🔍 Checking cluster connectivity..."
+          echo "Checking cluster connectivity..."
           kubectl cluster-info
           kubectl get nodes -o wide
 
-      # 🏗️ Ensure namespace exists
+      # Ensure namespace exists
       - name: Ensure Namespace Exists
         run: |
           kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
 
-      # 🧩 Adopt existing resources (for zero downtime)
+      # Adopt existing resources
       - name: Adopt Existing Resources
         run: |
           RELEASE=webapp-dev
           NS=dev
           for TYPE in deployment svc ingress configmap; do
             for NAME in $(kubectl get $TYPE -n $NS --no-headers -o custom-columns=":metadata.name" | grep $RELEASE || true); do
-              echo "🔄 Adopting $TYPE $NAME ..."
+              echo "Adopting $TYPE $NAME ..."
               kubectl -n $NS annotate $TYPE $NAME meta.helm.sh/release-name=$RELEASE meta.helm.sh/release-namespace=$NS --overwrite
               kubectl -n $NS label $TYPE $NAME app.kubernetes.io/managed-by=Helm --overwrite
             done
           done
 
-      # 🚀 Deploy Helm chart
+      # Deploy Helm chart
       - name: Deploy Helm Chart — DEV
         working-directory: ./helm-gitops-project
         run: |
-          echo "🚀 Deploying webapp-dev to dev namespace ..."
+          echo "Deploying webapp-dev to dev namespace ..."
           helm upgrade --install webapp-dev ./charts/webapp \
             --values charts/webapp/values/dev.yaml \
             --set image.repository=${{ github.event.inputs.imageRepo }} \
             --set image.tag=${{ github.event.inputs.imageTag }} \
             -n dev --atomic --timeout 10m0s --wait
 
-      # ✅ Post-deploy verification
+      # Post-deploy verification
       - name: Verify Deployment — DEV
         run: |
-          echo "🔎 Checking DEV resources ..."
+          echo "Checking DEV resources ..."
           kubectl get all -n dev | grep webapp-dev || true
           kubectl rollout status deployment/webapp-dev -n dev --timeout=180s
           kubectl get ingress -n dev | grep webapp-dev || true
 
-  # --------------------------------------------------------
-  # 🧱 Deploy to PROD environment when main branch is pushed
-  # --------------------------------------------------------
+  # Deploy to PROD environment when main branch is pushed
   deploy-prod:
     if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-22.04
-    name: 🚀 Deploy to PROD
+    name: Deploy to PROD
 
     steps:
-      # 🧾 Checkout code
+      # Checkout code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # ⚙️ Setup Helm
+      # Setup Helm
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
           version: "3.13.0"
 
-      # ⚙️ Setup Kubectl
+      # Setup Kubectl
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: "latest"
 
-      # 🔐 Configure kubeconfig
+      # Configure kubeconfig
       - name: Configure kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -164,46 +160,46 @@ jobs:
               token: ${K8S_TOKEN}
           EOF
 
-      # 🔍 Verify cluster access
+      # Verify cluster access
       - name: Verify Cluster Access
         run: |
-          echo "🔍 Checking cluster connectivity..."
+          echo "Checking cluster connectivity..."
           kubectl cluster-info
           kubectl get nodes -o wide
 
-      # 🏗️ Ensure namespace exists
+      # Ensure namespace exists
       - name: Ensure Namespace Exists
         run: |
           kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
 
-      # 🧩 Adopt existing resources
+      # Adopt existing resources
       - name: Adopt Existing Resources
         run: |
           RELEASE=webapp-prod
           NS=production
           for TYPE in deployment svc ingress configmap; do
             for NAME in $(kubectl get $TYPE -n $NS --no-headers -o custom-columns=":metadata.name" | grep $RELEASE || true); do
-              echo "🔄 Adopting $TYPE $NAME ..."
+              echo "Adopting $TYPE $NAME ..."
               kubectl -n $NS annotate $TYPE $NAME meta.helm.sh/release-name=$RELEASE meta.helm.sh/release-namespace=$NS --overwrite
               kubectl -n $NS label $TYPE $NAME app.kubernetes.io/managed-by=Helm --overwrite
             done
           done
 
-      # 🚀 Deploy Helm chart
+      # Deploy Helm chart
       - name: Deploy Helm Chart — PROD
         working-directory: ./helm-gitops-project
         run: |
-          echo "🚀 Deploying webapp-prod to production namespace ..."
+          echo "Deploying webapp-prod to production namespace ..."
           helm upgrade --install webapp-prod ./charts/webapp \
             --values charts/webapp/values/prod.yaml \
             --set image.repository=${{ github.event.inputs.imageRepo }} \
             --set image.tag=${{ github.event.inputs.imageTag }} \
             -n production --atomic --timeout 10m0s --wait
 
-      # ✅ Post-deploy verification
+      # Post-deploy verification
       - name: Verify Deployment — PROD
         run: |
-          echo "🔎 Checking PROD resources ..."
+          echo "Checking PROD resources ..."
           kubectl get all -n production | grep webapp-prod || true
           kubectl rollout status deployment/webapp-prod -n production --timeout=180s
           kubectl get ingress -n production | grep webapp-prod || true
