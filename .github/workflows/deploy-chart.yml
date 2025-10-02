@@ -21,23 +21,23 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # 🧾 Checkout repository
+      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ⚙️ Install Helm
+      # Install Helm
       - name: Set up Helm
         uses: azure/setup-helm@v3
         with:
           version: '3.13.0'
 
-      # ⚙️ Install kubectl
+      # Install kubectl
       - name: Set up Kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
-      # 🔐 Configure kubeconfig using K8s ServiceAccount token
+      # Configure kubeconfig using K8s ServiceAccount token
       - name: Configure kubectl with ServiceAccount Token
         env:
           K8S_SERVER: https://941fe0069c621bea124d8f22e7c62b1f.gr7.ap-south-1.eks.amazonaws.com
@@ -64,26 +64,24 @@ jobs:
               token: ${K8S_TOKEN}
           EOF
 
-      # 🔍 Verify cluster access
+      # Verify cluster access
       - name: Verify Kubernetes Connection
         run: |
-          echo "🔍 Checking cluster connectivity..."
+          echo "Checking cluster connectivity..."
           kubectl cluster-info || exit 1
-          kubectl get nodes -o wide || echo "⚠️ No nodes listed - check RBAC permissions"
+          kubectl get nodes -o wide || echo "No nodes listed - check RBAC permissions"
 
-      # 🏗️ Ensure namespaces exist
+      # Ensure namespaces exist
       - name: Create Namespaces
         run: |
           kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
           kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
 
-      # =========================
-      # 🚀 DEPLOYMENT TO DEV
-      # =========================
+      # Deployment to DEV
       - name: Deploy Helm Chart to Dev
         if: github.ref == 'refs/heads/dev'
         run: |
-          echo "⚙️ Starting Dev deployment..."
+          echo "Starting Dev deployment..."
 
           NS="dev"
           RELEASE="webapp"
@@ -93,47 +91,45 @@ jobs:
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
 
-          # 🧩 Adopt Deployment
+          # Adopt Deployment
           if kubectl get deployment $DEPLOYMENT_NAME -n $NS >/dev/null 2>&1; then
-            echo "🔄 Adopting existing deployment $DEPLOYMENT_NAME..."
+            echo "Adopting existing deployment $DEPLOYMENT_NAME..."
             kubectl -n $NS annotate deployment $DEPLOYMENT_NAME \
               meta.helm.sh/release-name=$RELEASE \
               meta.helm.sh/release-namespace=$NS --overwrite
             kubectl -n $NS label deployment $DEPLOYMENT_NAME app.kubernetes.io/managed-by=Helm --overwrite
           fi
 
-          # 🧩 Adopt Service
+          # Adopt Service
           if kubectl get svc $SERVICE_NAME -n $NS >/dev/null 2>&1; then
-            echo "🔄 Adopting existing service $SERVICE_NAME..."
+            echo "Adopting existing service $SERVICE_NAME..."
             kubectl -n $NS annotate svc $SERVICE_NAME \
               meta.helm.sh/release-name=$RELEASE \
               meta.helm.sh/release-namespace=$NS --overwrite
             kubectl -n $NS label svc $SERVICE_NAME app.kubernetes.io/managed-by=Helm --overwrite
           fi
 
-          # 🧩 Adopt Ingress
+          # Adopt Ingress
           if kubectl get ingress $INGRESS_NAME -n $NS >/dev/null 2>&1; then
-            echo "🔄 Adopting existing ingress $INGRESS_NAME..."
+            echo "Adopting existing ingress $INGRESS_NAME..."
             kubectl -n $NS annotate ingress $INGRESS_NAME \
               meta.helm.sh/release-name=$RELEASE \
               meta.helm.sh/release-namespace=$NS --overwrite
             kubectl -n $NS label ingress $INGRESS_NAME app.kubernetes.io/managed-by=Helm --overwrite
           fi
 
-          echo "🚀 Running Helm upgrade/install for Dev..."
+          echo "Running Helm upgrade/install for Dev..."
           helm upgrade --install $RELEASE ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/dev.yaml \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
             -n $NS
 
-      # =========================
-      # 🚀 DEPLOYMENT TO PRODUCTION
-      # =========================
+      # Deployment to Production
       - name: Deploy Helm Chart to Production
         if: github.ref == 'refs/heads/main'
         run: |
-          echo "⚙️ Starting Production deployment..."
+          echo "Starting Production deployment..."
 
           NS="production"
           RELEASE="webapp"
@@ -143,39 +139,36 @@ jobs:
           IMAGE_REPO="${{ github.event.inputs.imageRepo || '990060748279.dkr.ecr.us-east-1.amazonaws.com/swapp-dev' }}"
           IMAGE_TAG="${{ github.event.inputs.imageTag || 'latest' }}"
 
-          # 🧩 Adopt Deployment
+          # Adopt Deployment
           if kubectl get deployment $DEPLOYMENT_NAME -n $NS >/dev/null 2>&1; then
-            echo "🔄 Adopting existing deployment $DEPLOYMENT_NAME..."
+            echo "Adopting existing deployment $DEPLOYMENT_NAME..."
             kubectl -n $NS annotate deployment $DEPLOYMENT_NAME \
               meta.helm.sh/release-name=$RELEASE \
               meta.helm.sh/release-namespace=$NS --overwrite
             kubectl -n $NS label deployment $DEPLOYMENT_NAME app.kubernetes.io/managed-by=Helm --overwrite
           fi
 
-          # 🧩 Adopt Service
+          # Adopt Service
           if kubectl get svc $SERVICE_NAME -n $NS >/dev/null 2>&1; then
-            echo "🔄 Adopting existing service $SERVICE_NAME..."
+            echo "Adopting existing service $SERVICE_NAME..."
             kubectl -n $NS annotate svc $SERVICE_NAME \
               meta.helm.sh/release-name=$RELEASE \
               meta.helm.sh/release-namespace=$NS --overwrite
             kubectl -n $NS label svc $SERVICE_NAME app.kubernetes.io/managed-by=Helm --overwrite
           fi
 
-          # 🧩 Adopt Ingress
+          # Adopt Ingress
           if kubectl get ingress $INGRESS_NAME -n $NS >/dev/null 2>&1; then
-            echo "🔄 Adopting existing ingress $INGRESS_NAME..."
+            echo "Adopting existing ingress $INGRESS_NAME..."
             kubectl -n $NS annotate ingress $INGRESS_NAME \
               meta.helm.sh/release-name=$RELEASE \
               meta.helm.sh/release-namespace=$NS --overwrite
             kubectl -n $NS label ingress $INGRESS_NAME app.kubernetes.io/managed-by=Helm --overwrite
           fi
 
-          echo "🚀 Running Helm upgrade/install for Production..."
+          echo "Running Helm upgrade/install for Production..."
           helm upgrade --install $RELEASE ./helm-gitops-project/charts/webapp \
             --values ./helm-gitops-project/charts/webapp/values/prod.yaml \
             --set image.repository=$IMAGE_REPO \
             --set image.tag=$IMAGE_TAG \
             -n $NS
-
-
-            # =========================
