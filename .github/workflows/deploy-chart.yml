@@ -1,4 +1,4 @@
-name:  Helm Chart Deployment (Dev + Prod) — Zero Downtime
+name: Helm Chart Deployment (Dev + Prod) — Zero Downtime
 
 on:
   workflow_dispatch:
@@ -17,15 +17,33 @@ on:
       - dev
       - main
 
+# 🚦 Prevent multiple Helm jobs from colliding
+concurrency:
+  group: helm-deploy
+  cancel-in-progress: false
+
 env:
   K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
   K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
 
 jobs:
-  deploy-dev:
-    if: ${{ github.ref == 'refs/heads/dev' }}
+  deploy:
     runs-on: ubuntu-22.04
-    name:  Deploy to DEV
+
+    # 🎯 Run job conditionally: dev branch → dev, main branch → prod
+    strategy:
+      matrix:
+        include:
+          - branch: dev
+            release: webapp-dev
+            namespace: dev
+            valuesFile: charts/webapp/values/dev.yaml
+          - branch: main
+            release: webapp-prod
+            namespace: production
+            valuesFile: charts/webapp/values/prod.yaml
+
+    if: github.ref == format('refs/heads/{0}', matrix.branch)
 
     steps:
       - name: Checkout Repository
@@ -66,120 +84,70 @@ jobs:
 
       - name: Verify Cluster Access
         run: |
-          echo " Checking cluster connectivity..."
+          echo "Checking cluster connectivity..."
           kubectl cluster-info
           kubectl get nodes -o wide
 
       - name: Ensure Namespace Exists
         run: |
-          kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace ${{ matrix.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Clear Helm Pending State if Any
+        run: |
+          set -e
+          RELEASE=${{ matrix.release }}
+          NS=${{ matrix.namespace }}
+          echo "Checking Helm release $RELEASE in namespace $NS..."
+          if helm history $RELEASE -n $NS | grep -E 'pending-upgrade|pending-rollback'; then
+            echo "Release $RELEASE is stuck in pending state, rolling back..."
+            LAST_GOOD=$(helm history $RELEASE -n $NS --output json | jq '[.[] | select(.status == "deployed")][-1].revision')
+            if [ -n "$LAST_GOOD" ]; then
+              helm rollback $RELEASE $LAST_GOOD -n $NS
+            else
+              echo "No good revision found, cleaning Helm secrets..."
+              kubectl delete secret -n $NS -l owner=helm,name=$RELEASE || true
+            fi
+          else
+            echo "No pending state detected, safe to continue."
+          fi
 
       - name: Adopt Existing Resources
         run: |
-          RELEASE=webapp-dev
-          NS=dev
+          RELEASE=${{ matrix.release }}
+          NS=${{ matrix.namespace }}
           for TYPE in deployment svc ingress configmap; do
             for NAME in $(kubectl get $TYPE -n $NS --no-headers -o custom-columns=":metadata.name" | grep $RELEASE || true); do
-              echo " Adopting $TYPE $NAME ..."
+              echo "Adopting $TYPE $NAME ..."
               kubectl -n $NS annotate $TYPE $NAME meta.helm.sh/release-name=$RELEASE meta.helm.sh/release-namespace=$NS --overwrite
               kubectl -n $NS label $TYPE $NAME app.kubernetes.io/managed-by=Helm --overwrite
             done
           done
 
-      - name: Deploy Helm Chart — DEV
+      - name: Deploy Helm Chart
         working-directory: ./helm-gitops-project
         run: |
-          echo " Deploying webapp-dev to dev namespace ..."
-          helm upgrade --install webapp-dev ./charts/webapp \
-            --values charts/webapp/values/dev.yaml \
+          echo "Deploying ${{ matrix.release }} to ${{ matrix.namespace }} namespace..."
+          helm upgrade --install ${{ matrix.release }} ./charts/webapp \
+            --values ${{ matrix.valuesFile }} \
             --set image.repository=${{ github.event.inputs.imageRepo }} \
             --set image.tag=${{ github.event.inputs.imageTag }} \
-            -n dev --atomic --timeout 10m0s --wait
+            -n ${{ matrix.namespace }} --atomic --cleanup-on-fail --timeout 5m --wait
 
-      - name: Verify Deployment — DEV
+      - name: Verify Deployment
         run: |
-          echo " Checking DEV resources ..."
-          kubectl get all -n dev | grep webapp-dev || true
-          kubectl rollout status deployment/webapp-dev -n dev --timeout=180s
-          kubectl get ingress -n dev | grep webapp-dev || true
+          echo "Checking resources in ${{ matrix.namespace }} namespace..."
+          kubectl get all -n ${{ matrix.namespace }} | grep ${{ matrix.release }} || true
+          kubectl rollout status deployment/${{ matrix.release }} -n ${{ matrix.namespace }} --timeout=180s
+          kubectl get ingress -n ${{ matrix.namespace }} | grep ${{ matrix.release }} || true
 
-  deploy-prod:
-    if: ${{ github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-22.04
-    name:  Deploy to PROD
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v3
-        with:
-          version: "3.13.0"
-
-      - name: Set up Kubectl
-        uses: azure/setup-kubectl@v3
-        with:
-          version: "latest"
-
-      - name: Configure kubeconfig
+      - name: Debug Pods if Rollout Fails
+        if: failure()
         run: |
-          mkdir -p ~/.kube
-          cat <<EOF > ~/.kube/config
-          apiVersion: v1
-          kind: Config
-          clusters:
-          - cluster:
-              insecure-skip-tls-verify: true
-              server: ${K8S_SERVER}
-            name: eks-cluster
-          contexts:
-          - context:
-              cluster: eks-cluster
-              user: sa-user
-            name: eks-context
-          current-context: eks-context
-          users:
-          - name: sa-user
-            user:
-              token: ${K8S_TOKEN}
-          EOF
-
-      - name: Verify Cluster Access
-        run: |
-          echo " Checking cluster connectivity..."
-          kubectl cluster-info
-          kubectl get nodes -o wide
-
-      - name: Ensure Namespace Exists
-        run: |
-          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Adopt Existing Resources
-        run: |
-          RELEASE=webapp-prod
-          NS=production
-          for TYPE in deployment svc ingress configmap; do
-            for NAME in $(kubectl get $TYPE -n $NS --no-headers -o custom-columns=":metadata.name" | grep $RELEASE || true); do
-              echo " Adopting $TYPE $NAME ..."
-              kubectl -n $NS annotate $TYPE $NAME meta.helm.sh/release-name=$RELEASE meta.helm.sh/release-namespace=$NS --overwrite
-              kubectl -n $NS label $TYPE $NAME app.kubernetes.io/managed-by=Helm --overwrite
-            done
-          done
-
-      - name: Deploy Helm Chart — PROD
-        working-directory: ./helm-gitops-project
-        run: |
-          echo " Deploying webapp-prod to production namespace ..."
-          helm upgrade --install webapp-prod ./charts/webapp \
-            --values charts/webapp/values/prod.yaml \
-            --set image.repository=${{ github.event.inputs.imageRepo }} \
-            --set image.tag=${{ github.event.inputs.imageTag }} \
-            -n production --atomic --timeout 10m0s --wait
-
-      - name: Verify Deployment — PROD
-        run: |
-          echo " Checking PROD resources ..."
-          kubectl get all -n production | grep webapp-prod || true
-          kubectl rollout status deployment/webapp-prod -n production --timeout=180s
-          kubectl get ingress -n production | grep webapp-prod || true
+          echo "DEBUG: Showing pod details in ${{ matrix.namespace }} namespace"
+          kubectl get pods -n ${{ matrix.namespace }} -o wide
+          kubectl describe pods -n ${{ matrix.namespace }} | tail -n 100
+          POD=$(kubectl get pods -n ${{ matrix.namespace }} -l app=${{ matrix.release }} -o jsonpath='{.items[0].metadata.name}' || true)
+          if [ -n "$POD" ]; then
+            echo "Fetching logs from pod $POD..."
+            kubectl logs $POD -n ${{ matrix.namespace }} --tail=50
+          fi
