@@ -3,14 +3,15 @@ namespace: dev
 environment: development
 port: 80
 replicaCount: 1
+
 image:
   repository: 222964728025.dkr.ecr.us-east-1.amazonaws.com/sw_ecr
   tag: devv1
   pullPolicy: Always
+
 service:
   type: ClusterIP
   port: 80
-# Simple ingress config without domain
 
 ingress:
   enabled: true
@@ -19,7 +20,8 @@ ingress:
   hostnames:
     - dev-webapp.local
   annotations: {}
-  addRootPath: true # Only add this to one of your environments (prod or dev)
+  addRootPath: false   # keep only in prod if you want root path
+
 resources:
   requests:
     memory: "64Mi"
@@ -27,5 +29,3 @@ resources:
   limits:
     memory: "128Mi"
     cpu: "100m"
-
-#
