@@ -1,4 +1,4 @@
-#First, create a namespace
+##First, create a namespace
 $ kubectl create namespace argocd
 
 #let's apply the yaml configuration files for ArgoCd
