@@ -18,7 +18,7 @@ on:
       - main
 
 env:
-  K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
+  K8S_SERVER: https://941FE0069C621BEA124D8F22E7C62B1F.gr7.ap-south-1.eks.amazonaws.com
   K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
 
 jobs:
