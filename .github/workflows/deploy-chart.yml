@@ -40,7 +40,7 @@ jobs:
       # 🔐 Configure kubeconfig using K8s ServiceAccount token
       - name: Configure kubectl with ServiceAccount Token
         env:
-          K8S_SERVER: https://8E8E0B619BB89BD85A4298A1A6C979C3.gr7.ap-south-1.eks.amazonaws.com
+          K8S_SERVER: https://941fe0069c621bea124d8f22e7c62b1f.gr7.ap-south-1.eks.amazonaws.com
           K8S_TOKEN: ${{ secrets.K8S_TOKEN }}
         run: |
           mkdir -p ~/.kube
